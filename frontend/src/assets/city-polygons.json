@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "south_mumbai_01",
+        "name": "Colaba",
+        "district": "Island City",
+        "score": 88,
+        "crime": 10,
+        "traffic": 30,
+        "rent": 95,
+        "facilities": 90,
+        "status": "Stable"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[ [72.82, 18.90], [72.84, 18.90], [72.84, 18.92], [72.82, 18.92], [72.82, 18.90] ]]
+      }
+    },
+    {
+  "type": "Feature",
+  "properties": {
+    "name": "Panvel Sector 12",
+    "safety": 85,
+    "mobility": 70,
+    "nature": 60,
+    "infrastructure": 90,
+    "social": 75,
+    "overall": 82
+  
+},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[ [72.98, 19.02], [73.02, 19.02], [73.02, 19.05], [72.98, 19.05], [72.98, 19.02] ]]
+      }
+    }
+    
+  ]
+}

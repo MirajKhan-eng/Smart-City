@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "id": "vashi_01", "name": "Vashi Sector 17", "safety": 85, "traffic": 40, "aqi": 65, "rent": 70, "cleanliness": 90 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[73.02, 19.03], [73.04, 19.03], [73.04, 19.05], [73.02, 19.05], [73.02, 19.03]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "id": "sion_01", "name": "Sion Circle", "safety": 60, "traffic": 10, "aqi": 30, "rent": 85, "cleanliness": 50 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[72.85, 19.03], [72.87, 19.03], [72.87, 19.05], [72.85, 19.05], [72.85, 19.03]]]
+      }
+    }
+  ]
+}

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import ProtectedRoute from './pages/ProtectedRoute';
-import TrafficRoute from './pages/TrafficRoute';
+import LivabilityScore from './pages/LivabilityScore';
+import TrafficRoute from './pages/Transportation';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ReportIssue from './pages/ReportIssue';
@@ -39,9 +40,8 @@ function App() {
               <SidebarLink to="/user-home" icon="🏠" label="Home" />
               <SidebarLink to="/report-issue" icon="📝" label="Civic Complaints" />
               <SidebarLink to="#" icon="🛡️" label="Safety" />
-              {/* FIXED: Changed '#' to '/traffic-routes' */}
               <SidebarLink to="/traffic-routes" icon="🚦" label="Traffic Routes" />
-              <SidebarLink to="#" icon="🔥" label="Heatmap" />
+              <SidebarLink to="/livability" icon="📊" label="Livability Score" />
               <SidebarLink to="#" icon="🚨" label="Emergency" />
             </nav>
 
@@ -97,14 +97,19 @@ function App() {
               <Route path="/report-issue" element={<ProtectedRoute roleRequired="citizen"><ReportIssue /></ProtectedRoute>} />
               <Route path="/admin-dashboard" element={<ProtectedRoute roleRequired="admin"><AdminDashboard /></ProtectedRoute>} />
               
-              {/* FIXED: Moved this ABOVE the catch-all '*' route */}
               <Route path="/traffic-routes" element={
                 <ProtectedRoute roleRequired="citizen">
                   <TrafficRoute />
                 </ProtectedRoute>
               } />
 
-              {/* Catch-all MUST be the very last route */}
+              {/* NEW: Livability Score Route Added Here */}
+              <Route path="/livability" element={
+                <ProtectedRoute roleRequired="citizen">
+                  <LivabilityScore />
+                </ProtectedRoute>
+              } />
+
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
