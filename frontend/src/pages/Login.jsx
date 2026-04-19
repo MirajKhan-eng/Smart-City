@@ -23,7 +23,7 @@ const Login = () => {
       if (res.data.user.role === 'admin') {
         navigate('/admin-dashboard');
       } else {
-        navigate('/report-issue');
+        navigate('/user-home');
       }
       
       // 3. Force a refresh so App.jsx catches the new localStorage data for the profile circle

@@ -9,6 +9,7 @@ import ReportIssue from './pages/ReportIssue';
 import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
+import Emergency from './pages/Emergency';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -42,7 +43,7 @@ function App() {
               <SidebarLink to="#" icon="🛡️" label="Safety" />
               <SidebarLink to="/traffic-routes" icon="🚦" label="Traffic Routes" />
               <SidebarLink to="/livability" icon="📊" label="Livability Score" />
-              <SidebarLink to="#" icon="🚨" label="Emergency" />
+              <SidebarLink to="/emergency" icon="🚨" label="Emergency" />
             </nav>
 
             <div className="p-4 border-t border-gray-100">
@@ -103,10 +104,15 @@ function App() {
                 </ProtectedRoute>
               } />
 
-              {/* NEW: Livability Score Route Added Here */}
               <Route path="/livability" element={
                 <ProtectedRoute roleRequired="citizen">
                   <LivabilityScore />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/emergency" element={
+                <ProtectedRoute roleRequired="citizen">
+                  <Emergency />
                 </ProtectedRoute>
               } />
 

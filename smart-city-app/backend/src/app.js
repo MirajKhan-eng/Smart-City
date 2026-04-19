@@ -1,26 +1,27 @@
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
-const axios = require('axios'); 
 const pool = require('./config/db');
+const bcrypt = require('bcrypt');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+
+// Limit handling for screenshots and community images
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ==========================================
-// 1. GEOLOCATION HELPERS
+// 1. GEOLOCATION & DISTANCE HELPERS (Restored)
 // ==========================================
 
-// Helper: Get real Lat/Lon using OpenStreetMap (Free Geocoding)
 async function getCoords(address) {
     try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ", Mumbai")}&limit=1`;
         const response = await axios.get(url, { 
             headers: { 'User-Agent': 'SmartCityProject/1.0' } 
         });
-        
         if (response.data.length > 0) {
             return {
                 lat: parseFloat(response.data[0].lat),
@@ -34,7 +35,6 @@ async function getCoords(address) {
     }
 }
 
-// Helper: Haversine formula for distance in KM
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -43,12 +43,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
               Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
               Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return (R * c) * 1.35; // Multiplier for real-world road path curves
+    return (R * c) * 1.35; // Real-world road multiplier
 }
 
 // ==========================================
-// 2. SMART AUTHENTICATION
+// 2. SMART AUTHENTICATION (Synced)
 // ==========================================
+
 app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     try {
@@ -63,18 +64,36 @@ app.post('/api/auth/login', async (req, res) => {
         if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
         res.json({
-            token: "dummy-jwt-token",
-            user: { id: user.id, name: user.name, email: user.email, role: user.role || 'user' }
+            user: { id: user.id, name: user.name, email: user.email, role: user.role || 'citizen' }
         });
     } catch (err) {
-        console.error("Login Error:", err);
         res.status(500).json({ error: "Server login error" });
     }
 });
 
+app.post('/api/auth/register', async (req, res) => {
+    const { name, email, password, role } = req.body;
+    try {
+        // Check if user exists
+        const checkUser = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+        if (checkUser.rows.length > 0) return res.status(400).json({ message: "User already exists" });
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const result = await pool.query(
+            'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
+            [name, email, hashedPassword, role || 'citizen']
+        );
+        res.status(201).json({ user: result.rows[0], message: "User registered successfully" });
+    } catch (err) {
+        console.error("Register Error:", err.message);
+        res.status(500).json({ error: "Server registration error" });
+    }
+});
+
 // ==========================================
-// 3. LIVABILITY ROUTES
+// 3. LIVABILITY ROUTES (Restored)
 // ==========================================
+
 app.get('/api/livability_all', async (req, res) => {
     try {
         const result = await pool.query('SELECT area_name, overall_score FROM livability_data');
@@ -96,118 +115,180 @@ app.get('/api/livability/:name(*)', async (req, res) => {
 });
 
 // ==========================================
-// 4. DYNAMIC TRANSPORTATION (RTO FARES & SMART TAGS)
+// 4. TRANSPORTATION CALCULATOR (Restored)
 // ==========================================
+
 app.post('/api/transport/calculate', async (req, res) => {
     const { from, to, purpose } = req.body;
-
     try {
         const startCoords = await getCoords(from);
         const endCoords = await getCoords(to);
 
         if (!startCoords || !endCoords) {
-            return res.status(404).json({ error: "Location not found." });
+            return res.status(404).json({ error: "Location not found in Mumbai region." });
         }
 
         const distance = calculateDistance(startCoords.lat, startCoords.lon, endCoords.lat, endCoords.lon);
-        const now = new Date();
-        const hour = now.getHours();
+        const hour = new Date().getHours();
         const isPeak = (hour >= 8 && hour <= 11) || (hour >= 17 && hour <= 21);
 
-        // Fares & Times Logic
-        const trainFareVal = distance > 35 ? 20 : (distance > 15 ? 15 : 10);
-        const busFareVal = distance > 15 ? 25 : (distance > 10 ? 20 : (distance > 5 ? 15 : 10));
-        const autoFareVal = Math.round(26 + (Math.max(0, distance - 1.5) * 17.14));
+        // Logic for Fares
+        const trainFare = distance > 35 ? 20 : (distance > 15 ? 15 : 10);
+        const autoFare = Math.round(26 + (Math.max(0, distance - 1.5) * 17.14));
+        const busFare = distance > 10 ? 25 : 15;
 
-        const trainTimeVal = Math.round((distance / 35) * 60 + 12);
-        const busTimeVal = Math.round((distance / 16) * 60 * (isPeak ? 1.8 : 1.1));
-        const autoTimeVal = Math.round((distance / 22) * 60 * (isPeak ? 1.4 : 1));
-
-        let rawOptions = [
-            { mode: 'Train', info: `Station nearest to ${from}`, time: trainTimeVal, fare: trainFareVal, comfort: 2 },
-            { mode: 'Bus', info: `Available via BEST/NMMT network`, time: busTimeVal, fare: busFareVal, comfort: 1 },
-            { mode: 'Auto/Cab', info: "Door-to-door service", time: autoTimeVal, fare: autoFareVal, comfort: 3 }
-        ];
-
-        // Dynamic Tagging
-        const minFare = Math.min(...rawOptions.map(o => o.fare));
-        const minTime = Math.min(...rawOptions.map(o => o.time));
-        const maxComfort = Math.max(...rawOptions.map(o => o.comfort));
-
-        const finalOptions = rawOptions.map(opt => {
-            let tags = [];
-            if (opt.fare === minFare) tags.push("Cheapest");
-            if (opt.time === minTime) tags.push("Fastest");
-            if (opt.comfort === maxComfort) tags.push("Comfortable");
-
-            return {
-                mode: opt.mode,
-                info: opt.info,
-                time: opt.time,
-                fare: `₹${opt.fare}`,
-                crowd: opt.mode === 'Auto/Cab' ? 'Low' : (isPeak ? 'Heavy' : 'Moderate'),
-                tag: tags[0] || "Standard"
-            };
-        });
+        // Logic for Times
+        const trainTime = Math.round((distance / 35) * 60 + 12);
+        const autoTime = Math.round((distance / 22) * 60 * (isPeak ? 1.4 : 1));
+        const busTime = Math.round((distance / 16) * 60 * (isPeak ? 1.8 : 1.1));
 
         res.json({
             distance: `${distance.toFixed(1)} km`,
-            options: finalOptions,
-            recommendation: { 
-                text: isPeak ? "Heavy traffic. Local Trains are highly recommended." : "Auto is best for comfort.",
-                option: isPeak ? "Train" : "Auto"
+            options: [
+                { 
+                    mode: 'Train', 
+                    time: trainTime, 
+                    fare: `₹${trainFare}`, 
+                    tag: 'Fastest', 
+                    info: `Nearest station to ${from}`, 
+                    crowd: isPeak ? 'Heavy' : 'Moderate' 
+                },
+                { 
+                    mode: 'Bus', 
+                    time: busTime, 
+                    fare: `₹${busFare}`, 
+                    tag: 'Cheapest', 
+                    info: 'BEST/NMMT Bus Frequency: 15 mins', 
+                    crowd: isPeak ? 'Full' : 'Moderate' 
+                },
+                { 
+                    mode: 'Auto/Cab', 
+                    time: autoTime, 
+                    fare: `₹${autoFare}`, 
+                    tag: 'Comfort', 
+                    info: 'Door-to-door pickup available', 
+                    crowd: 'Low' 
+                }
+            ],
+            recommendation: {
+                text: isPeak 
+                    ? "Peak hours detected. Local trains are 40% faster than road travel currently." 
+                    : "Traffic is light. Auto-rickshaw or Cab is recommended for a comfortable journey.",
+                option: isPeak ? "Train" : "Auto/Cab"
             },
-            alerts: [{ id: 1, title: "Commuter Alert", msg: "Harbour Line running normally.", type: "warning" }]
+            alerts: [
+                { id: 1, title: "Weather", msg: "Clear skies. No transport delays reported.", type: "info" },
+                { id: 2, title: "Traffic", msg: isPeak ? "Heavy congestion on Main Highway." : "Smooth flow on most arterial roads.", type: "warning" }
+            ]
         });
     } catch (err) {
-        res.status(500).json({ error: "Transport calculation failed." });
+        console.error(err);
+        res.status(500).json({ error: "Internal calculation error." });
     }
 });
 
 // ==========================================
-// 5. CIVIC REPORTING: SUBMIT (FIXED FOR INT)
+// 5. COMMUNITY FEED & REPORTING (Synced with Photo Support)
 // ==========================================
-app.post('/api/reports/submit', async (req, res) => {
-    const { user_id, title, description, category, location } = req.body;
 
-    try {
-        const userIdInt = parseInt(user_id);
-        if (isNaN(userIdInt)) return res.status(400).json({ message: "Invalid User ID." });
-
-        const query = `
-            INSERT INTO reports (user_id, type, description, location, status, created_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
-            RETURNING *;
-        `;
-        
-        const values = [userIdInt, category, `${title}: ${description}`, location, 'Pending'];
-        const result = await pool.query(query, values);
-        res.status(201).json({ message: "Report filed successfully", report: result.rows[0] });
-
-    } catch (err) {
-        console.error("❌ DATABASE ERROR (SUBMIT):", err.message);
-        res.status(500).json({ error: "Database error: " + err.message });
-    }
-});
-
-// ==========================================
-// 6. ADMIN: FETCH ALL REPORTS (FIXED 404)
-// ==========================================
 app.get('/api/reports/all', async (req, res) => {
+    const { filter } = req.query;
     try {
+        let orderBy = 'r.created_at DESC';
+        if (filter === 'trending') orderBy = 'r.votes DESC, r.created_at DESC';
         const query = `
-            SELECT r.*, u.name as user_name 
-            FROM reports r
-            LEFT JOIN users u ON r.user_id = u.id
-            ORDER BY r.created_at DESC;
+            SELECT r.*, u.name as reporter_name 
+            FROM reports r 
+            LEFT JOIN users u ON r.user_id = u.id 
+            ORDER BY 
+                CASE WHEN LOWER(r.status) = 'resolved' THEN 1 ELSE 0 END ASC,
+                r.votes DESC, 
+                r.created_at DESC;
         `;
         const result = await pool.query(query);
         res.json(result.rows);
+    } catch (err) { res.status(500).json({ error: "Fetch Error" }); }
+});
+
+app.post('/api/reports/submit', async (req, res) => {
+    const { user_id, title, description, category, location, image_url } = req.body;
+    try {
+        const uId = parseInt(user_id);
+        const finalImage = (image_url && image_url.trim() !== "") ? image_url : null;
+        
+        const query = `
+            INSERT INTO reports (user_id, title, type, description, location, image_url, votes, status, priority) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, 'Pending', 'Medium') 
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [uId, title, category, description, location, finalImage, 0]);
+        console.log("New Report Saved:", title);
+        res.status(201).json(result.rows[0]);
     } catch (err) {
-        console.error("❌ DATABASE ERROR (FETCH ALL):", err.message);
-        res.status(500).json({ error: "Failed to fetch reports." });
+        console.error("DB Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/reports/:id/vote', async (req, res) => {
+    const { id } = req.params;
+    const { user_id } = req.body;
+    try {
+        const rId = parseInt(id);
+        const uId = parseInt(user_id);
+        const check = await pool.query('SELECT * FROM report_votes WHERE report_id = $1 AND user_id = $2', [rId, uId]);
+        if (check.rows.length > 0) {
+            await pool.query('DELETE FROM report_votes WHERE report_id = $1 AND user_id = $2', [rId, uId]);
+            await pool.query('UPDATE reports SET votes = GREATEST(0, COALESCE(votes, 1) - 1) WHERE id = $1', [rId]);
+            return res.json({ action: 'unliked' });
+        }
+        await pool.query('INSERT INTO report_votes (report_id, user_id) VALUES ($1, $2)', [rId, uId]);
+        await pool.query('UPDATE reports SET votes = COALESCE(votes, 0) + 1 WHERE id = $1', [rId]);
+        res.json({ action: 'liked' });
+    } catch (err) { res.status(500).json({ error: "Vote crash" }); }
+});
+
+app.put('/api/admin/reports/:id', async (req, res) => {
+    const { id } = req.params;
+    const { status, admin_message, priority } = req.body;
+    try {
+        const query = `
+            UPDATE reports 
+            SET status = $1, admin_message = $2, priority = $3 
+            WHERE id = $4 
+            RETURNING *;
+        `;
+        const result = await pool.query(query, [status, admin_message, priority, id]);
+        if (result.rows.length === 0) return res.status(404).json({ message: "Report not found" });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error("Admin Update Error:", err.message);
+        res.status(500).json({ error: "Server update error" });
+    }
+});
+
+app.get('/api/reports/my-votes/:user_id', async (req, res) => {
+    const { user_id } = req.params;
+    try {
+        const result = await pool.query('SELECT report_id FROM report_votes WHERE user_id = $1', [user_id]);
+        res.json(result.rows.map(r => r.report_id));
+    } catch (err) {
+        res.status(500).json({ error: "Fetch Votes Error" });
+    }
+});
+
+app.delete('/api/admin/reports/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM report_votes WHERE report_id = $1', [id]);
+        const result = await pool.query('DELETE FROM reports WHERE id = $1 RETURNING *', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ message: "Report not found" });
+        res.json({ message: "Report deleted successfully" });
+    } catch (err) {
+        console.error("Delete Error:", err.message);
+        res.status(500).json({ error: "Server delete error" });
     }
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Smart City API Active on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Smart City Full-Feature API active on port ${PORT}`));
