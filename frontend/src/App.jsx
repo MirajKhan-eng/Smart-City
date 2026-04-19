@@ -40,7 +40,6 @@ function App() {
             <nav className="flex-1 p-4 space-y-1">
               <SidebarLink to="/user-home" icon="🏠" label="Home" />
               <SidebarLink to="/report-issue" icon="📝" label="Civic Complaints" />
-              <SidebarLink to="#" icon="🛡️" label="Safety" />
               <SidebarLink to="/traffic-routes" icon="🚦" label="Traffic Routes" />
               <SidebarLink to="/livability" icon="📊" label="Livability Score" />
               <SidebarLink to="/emergency" icon="🚨" label="Emergency" />

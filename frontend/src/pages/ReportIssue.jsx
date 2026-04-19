@@ -11,7 +11,13 @@ import {
   Filter,
   AlertCircle,
   Clock,
-  ChevronDown
+  ChevronDown,
+  CheckCircle2,
+  UserCheck,
+  HardHat,
+  ShieldCheck,
+  Pencil,
+  Maximize2
 } from 'lucide-react';
 
 const ReportIssue = () => {
@@ -19,6 +25,8 @@ const ReportIssue = () => {
     const [showForm, setShowForm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [votedIds, setVotedIds] = useState(new Set());
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [editingReportId, setEditingReportId] = useState(null);
     const [formData, setFormData] = useState({ 
         title: '', 
         description: '', 
@@ -26,16 +34,12 @@ const ReportIssue = () => {
         location: '', 
         image_url: '' 
     });
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
     const user = JSON.parse(localStorage.getItem('user'));
 
     const categories = [
-        "Pothole", 
-        "Streetlight", 
-        "Waste Management", 
-        "Water Leakage", 
-        "Security/Crime", 
-        "Traffic Issue", 
-        "Other"
+        "Pothole", "Streetlight", "Waste Management", "Water Leakage", "Security/Crime", "Traffic Issue", "Other"
     ];
 
     useEffect(() => { 
@@ -59,10 +63,8 @@ const ReportIssue = () => {
 
     const handleLike = async (id) => {
         if (!user) return alert("Please Login to vote");
-        
         const isVoted = votedIds.has(id);
         const newVotedIds = new Set(votedIds);
-        
         if (isVoted) {
             newVotedIds.delete(id);
             setReports(prev => prev.map(r => r.id === id ? { ...r, votes: Math.max(0, (r.votes || 1) - 1) } : r));
@@ -71,20 +73,28 @@ const ReportIssue = () => {
             setReports(prev => prev.map(r => r.id === id ? { ...r, votes: (r.votes || 0) + 1 } : r));
         }
         setVotedIds(newVotedIds);
-
         try {
             await axios.post(`http://localhost:5000/api/reports/${id}/vote`, { user_id: user.id });
             setTimeout(fetchReports, 500); 
-        } catch (err) { 
-            fetchReports(); 
-        }
+        } catch (err) { fetchReports(); }
     };
 
     const handleGetLocation = () => {
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                setFormData({ ...formData, location: `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}` });
-            });
+            setLoading(true);
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const { latitude, longitude } = pos.coords;
+                try {
+                    const res = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
+                        headers: { 'User-Agent': 'SmartCityApp/1.0' }
+                    });
+                    const addr = res.data.address;
+                    const cleanAddress = [addr.road, addr.suburb || addr.neighbourhood, addr.city || addr.town, addr.postcode].filter(Boolean).join(', ');
+                    setFormData({ ...formData, location: cleanAddress || res.data.display_name });
+                } catch (err) {
+                    setFormData({ ...formData, location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` });
+                } finally { setLoading(false); }
+            }, () => { setLoading(false); alert("Location access denied."); });
         }
     };
 
@@ -108,18 +118,51 @@ const ReportIssue = () => {
         reader.readAsDataURL(file);
     };
 
+    const handleLocationChange = async (val) => {
+        setFormData({ ...formData, location: val });
+        if (val.length > 3) {
+            try {
+                const res = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&addressdetails=1&limit=5&countrycodes=in&viewbox=72.7126,18.8441,73.1833,19.3300&bounded=1`, {
+                    headers: { 'User-Agent': 'SmartCityApp/1.0' }
+                });
+                setSuggestions(res.data);
+                setShowSuggestions(true);
+            } catch (err) { console.error("Search Failed"); }
+        } else { setSuggestions([]); setShowSuggestions(false); }
+    };
+
+    const selectSuggestion = (s) => {
+        setFormData({ ...formData, location: s.display_name });
+        setSuggestions([]); setShowSuggestions(false);
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         try {
             const payload = { ...formData, user_id: parseInt(user.id) };
-            await axios.post('http://localhost:5000/api/reports/submit', payload);
+            if (editingReportId) {
+                await axios.put(`http://localhost:5000/api/reports/${editingReportId}`, payload);
+            } else {
+                await axios.post('http://localhost:5000/api/reports/submit', payload);
+            }
             setShowForm(false);
+            setEditingReportId(null);
             setFormData({ title: '', description: '', category: 'Pothole', location: '', image_url: '' });
             fetchReports();
-        } catch (err) {
-            alert("Submission failed.");
-        } finally { setLoading(false); }
+        } catch (err) { alert("Submission failed."); } finally { setLoading(false); }
+    };
+
+    const handleEdit = (report) => {
+        setEditingReportId(report.id);
+        setFormData({
+            title: report.title,
+            description: report.description,
+            category: report.type || 'Pothole',
+            location: report.location,
+            image_url: report.image_url || ''
+        });
+        setShowForm(true);
     };
 
     const getStatusStyle = (status) => {
@@ -140,10 +183,7 @@ const ReportIssue = () => {
                     <h1 className="text-4xl font-black italic uppercase tracking-tighter text-slate-900">Community Feed</h1>
                     <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mt-1">Priority Sorted by Citizen Votes</p>
                 </div>
-                <button 
-                    onClick={() => setShowForm(true)} 
-                    className="bg-blue-600 text-white p-5 rounded-[2rem] shadow-xl shadow-blue-200 hover:scale-110 transition-all hover:bg-blue-700 active:scale-95"
-                >
+                <button onClick={() => { setEditingReportId(null); setFormData({ title: '', description: '', category: 'Pothole', location: '', image_url: '' }); setShowForm(true); }} className="bg-blue-600 text-white p-5 rounded-[2rem] shadow-xl shadow-blue-200 hover:scale-110 transition-all hover:bg-blue-700 active:scale-95">
                     <Plus size={28} />
                 </button>
             </div>
@@ -166,8 +206,15 @@ const ReportIssue = () => {
                                     </p>
                                 </div>
                             </div>
-                            <div className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border shadow-sm ${getStatusStyle(report.status)}`}>
-                                {report.status || 'Pending'}
+                            <div className="flex items-center gap-3">
+                                {user && user.id === report.user_id && (
+                                    <button onClick={() => handleEdit(report)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Edit Report">
+                                        <Pencil size={16} />
+                                    </button>
+                                )}
+                                <div className={`text-[9px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest border shadow-sm ${getStatusStyle(report.status)}`}>
+                                    {report.status || 'Pending'}
+                                </div>
                             </div>
                         </div>
 
@@ -178,117 +225,67 @@ const ReportIssue = () => {
                         </div>
 
                         {report.image_url && (
-                            <div className="rounded-[2rem] overflow-hidden mb-6 border border-slate-50 shadow-inner group-hover:shadow-2xl transition-all duration-700">
-                                <img src={report.image_url} className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-1000" alt="Evidence" />
+                            <div className="relative group/img rounded-[2rem] overflow-hidden mb-6 border border-slate-50 shadow-inner cursor-pointer" onClick={() => setSelectedImage(report.image_url)}>
+                                <img src={report.image_url} className="w-full h-80 object-cover group-hover/img:scale-105 transition-transform duration-1000" alt="Evidence" />
+                                <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                                    <div className="bg-white/20 backdrop-blur-md p-4 rounded-full border border-white/20 text-white">
+                                        <Maximize2 size={24} />
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        <div className="flex items-center gap-2 text-slate-400 text-xs font-bold mb-8">
+                        <div className="flex items-center gap-2 text-slate-400 text-xs font-bold mb-8 px-2">
                             <MapPin size={16} className="text-blue-500" /> 
                             <span className="truncate">{report.location}</span>
                         </div>
 
+                        {/* PROGRESS TIMELINE SECTION */}
+                        <div className="mb-10 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100/50">
+                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><Clock size={12} className="text-blue-500" /> Resolution Timeline</h5>
+                            <div className="relative space-y-8">
+                                <TimelineStep active={true} icon={<CheckCircle2 size={14}/>} title="Report Logged" desc="Official entry created." date={new Date(report.created_at).toLocaleDateString()} />
+                                <TimelineStep active={report.status === 'In-Progress' || report.status === 'Resolved'} icon={<UserCheck size={14}/>} title="Department Assigned" desc="Forwarded to Ward Officer." />
+                                <TimelineStep active={report.status === 'In-Progress' || report.status === 'Resolved'} icon={<HardHat size={14}/>} title="Site Inspection" desc="Field engineer investigating." />
+                                <TimelineStep active={report.status === 'Resolved'} icon={<ShieldCheck size={14}/>} title="Issue Resolved" desc="Verified and closed." isLast={true} />
+                                <div className="absolute left-[11px] top-4 bottom-4 w-[2px] bg-slate-200 -z-10"></div>
+                                <div className={`absolute left-[11px] top-4 w-[2px] bg-blue-500 -z-10 transition-all duration-1000 ${report.status === 'Resolved' ? 'h-full' : report.status === 'In-Progress' ? 'h-2/3' : 'h-0'}`}></div>
+                            </div>
+                        </div>
+
                         <div className="flex gap-4 pt-6 border-t border-slate-50">
-                            <button 
-                                onClick={() => handleLike(report.id)} 
-                                className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all font-black text-xs uppercase tracking-widest group/btn shadow-sm ${votedIds.has(report.id) ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600'}`}
-                            >
-                                <ThumbsUp size={18} className="group-active/btn:scale-125 transition-transform" /> 
-                                <span>{report.votes || 0}</span>
+                            <button onClick={() => handleLike(report.id)} className={`flex items-center gap-3 px-6 py-3 rounded-2xl transition-all font-black text-xs uppercase tracking-widest group/btn shadow-sm ${votedIds.has(report.id) ? 'bg-blue-600 text-white shadow-blue-200' : 'bg-slate-50 text-slate-500 hover:bg-blue-50 hover:text-blue-600'}`}>
+                                <ThumbsUp size={18} /> <span>{report.votes || 0}</span>
                             </button>
-                            <button className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all">
-                                <MessageSquare size={18} /> Discuss
-                            </button>
+                            <button className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"><MessageSquare size={18} /> Discuss</button>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* New Report Modal */}
+            {/* LIGHTBOX MODAL */}
+            {selectedImage && (
+                <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-[200] flex items-center justify-center p-8 animate-in fade-in duration-300" onClick={() => setSelectedImage(null)}>
+                    <button className="absolute top-8 right-8 text-white p-4 hover:bg-white/10 rounded-full transition-all"><X size={32}/></button>
+                    <img src={selectedImage} className="max-w-full max-h-full rounded-2xl shadow-2xl border border-white/10 zoom-in" alt="Evidence Full" />
+                </div>
+            )}
+
+            {/* Form Modal */}
             {showForm && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4 overflow-y-auto">
-                    <div className="bg-white w-full max-w-xl rounded-[3rem] p-10 animate-in zoom-in-95 duration-300 shadow-2xl relative">
+                    <div className="bg-white w-full max-w-xl rounded-[3rem] p-10 shadow-2xl relative">
                         <div className="flex justify-between items-center mb-8">
-                            <div>
-                                <h2 className="font-black text-3xl uppercase italic tracking-tighter text-slate-900">New City Report</h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Authorized Citizen Submission</p>
-                            </div>
-                            <button onClick={() => setShowForm(false)} className="p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all text-slate-500"><X size={24}/></button>
+                            <div><h2 className="font-black text-3xl uppercase italic tracking-tighter text-slate-900">{editingReportId ? 'Edit Report' : 'New City Report'}</h2><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Authorized Submission</p></div>
+                            <button onClick={() => setShowForm(false)} className="p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 text-slate-500"><X size={24}/></button>
                         </div>
-                        
                         <form className="space-y-6" onSubmit={handleSubmit}>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Category</label>
-                                <div className="relative">
-                                    <select 
-                                        className="w-full p-4 bg-slate-50 rounded-2xl outline-none appearance-none font-bold text-slate-700 border border-slate-100 focus:ring-2 focus:ring-blue-500 transition-all"
-                                        value={formData.category}
-                                        onChange={e => setFormData({...formData, category: e.target.value})}
-                                    >
-                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Title</label>
-                                <input 
-                                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold focus:ring-2 focus:ring-blue-500 transition-all" 
-                                    placeholder="Brief summary of the issue" 
-                                    value={formData.title}
-                                    onChange={e => setFormData({...formData, title: e.target.value})} 
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Location</label>
-                                <div className="flex gap-2">
-                                    <input 
-                                        className="flex-1 p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold focus:ring-2 focus:ring-blue-500 transition-all" 
-                                        placeholder="Address or area" 
-                                        value={formData.location}
-                                        onChange={e => setFormData({...formData, location: e.target.value})} 
-                                        required
-                                    />
-                                    <button 
-                                        type="button"
-                                        onClick={handleGetLocation}
-                                        className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-blue-600 transition-all shadow-lg"
-                                        title="Get Current Location"
-                                    >
-                                        <Navigation size={24} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Description</label>
-                                <textarea 
-                                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none h-32 font-medium border border-slate-100 focus:ring-2 focus:ring-blue-500 transition-all" 
-                                    placeholder="Provide detailed information about the issue..." 
-                                    value={formData.description}
-                                    onChange={e => setFormData({...formData, description: e.target.value})} 
-                                    required 
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Evidence Upload</label>
-                                <label className="flex flex-col items-center justify-center p-8 border-4 border-dashed border-slate-100 rounded-[2rem] cursor-pointer hover:bg-slate-50 transition-all group">
-                                    <Camera className="text-slate-200 mb-3 group-hover:text-blue-500 transition-colors" size={48} />
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{formData.image_url ? "IMAGE READY ✓" : "UPLOAD PHOTO (MAX 5MB)"}</span>
-                                    <input type="file" className="hidden" accept="image/*" onChange={handleImage} />
-                                </label>
-                            </div>
-
-                            <button 
-                                disabled={loading} 
-                                className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                {loading ? "PROCESSING..." : "SUBMIT OFFICIAL REPORT"}
-                            </button>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Category</label><select className="w-full p-4 bg-slate-50 rounded-2xl outline-none font-bold text-slate-700 border border-slate-100" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Title</label><input className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold" placeholder="Summary" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} required /></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Location</label><div className="flex gap-2"><input className="flex-1 p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold" value={formData.location} onChange={e => handleLocationChange(e.target.value)} required /><button type="button" onClick={handleGetLocation} className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-blue-600"><Navigation size={24}/></button></div></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Description</label><textarea className="w-full p-4 bg-slate-50 rounded-2xl outline-none h-32 font-medium border border-slate-100" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} required /></div>
+                            <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">Evidence Upload</label><label className="flex flex-col items-center justify-center p-8 border-4 border-dashed border-slate-100 rounded-[2rem] cursor-pointer hover:bg-slate-50 group"><Camera className="text-slate-200 mb-3 group-hover:text-blue-50" size={48}/><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{formData.image_url ? "CHANGE PHOTO ✓" : "UPLOAD PHOTO"}</span><input type="file" className="hidden" accept="image/*" onChange={handleImage}/></label></div>
+                            <button disabled={loading} className="w-full py-5 bg-blue-600 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all">{loading ? "PROCESSING..." : editingReportId ? "UPDATE OFFICIAL REPORT" : "SUBMIT OFFICIAL REPORT"}</button>
                         </form>
                     </div>
                 </div>
@@ -296,5 +293,12 @@ const ReportIssue = () => {
         </div>
     );
 };
+
+const TimelineStep = ({ active, icon, title, desc, date }) => (
+    <div className="flex items-start gap-6 relative group/step">
+        <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 z-10 transition-all duration-500 ${active ? 'bg-blue-500 border-blue-500 text-white shadow-lg shadow-blue-200 scale-110' : 'bg-white border-slate-200 text-slate-300'}`}>{active ? icon : <Clock size={12}/>}</div>
+        <div><div className="flex items-center gap-3"><h6 className={`text-[11px] font-black uppercase tracking-tight ${active ? 'text-slate-900' : 'text-slate-400'}`}>{title}</h6>{date && <span className="text-[9px] font-bold text-slate-300">{date}</span>}</div><p className={`text-[10px] font-medium leading-none mt-1.5 ${active ? 'text-slate-500' : 'text-slate-300'}`}>{desc}</p></div>
+    </div>
+);
 
 export default ReportIssue;
