@@ -17,7 +17,8 @@ import {
   HardHat,
   ShieldCheck,
   Pencil,
-  Maximize2
+  Maximize2,
+  Activity
 } from 'lucide-react';
 
 const ReportIssue = () => {
@@ -244,12 +245,18 @@ const ReportIssue = () => {
                         <div className="mb-10 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100/50">
                             <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2"><Clock size={12} className="text-blue-500" /> Resolution Timeline</h5>
                             <div className="relative space-y-8">
-                                <TimelineStep active={true} icon={<CheckCircle2 size={14}/>} title="Report Logged" desc="Official entry created." date={new Date(report.created_at).toLocaleDateString()} />
-                                <TimelineStep active={report.status === 'In-Progress' || report.status === 'Resolved'} icon={<UserCheck size={14}/>} title="Department Assigned" desc="Forwarded to Ward Officer." />
-                                <TimelineStep active={report.status === 'In-Progress' || report.status === 'Resolved'} icon={<HardHat size={14}/>} title="Site Inspection" desc="Field engineer investigating." />
-                                <TimelineStep active={report.status === 'Resolved'} icon={<ShieldCheck size={14}/>} title="Issue Resolved" desc="Verified and closed." isLast={true} />
+                                <TimelineStep active={report.tracking_step >= 1} icon={<CheckCircle2 size={14}/>} title="Report Logged" desc="Official entry created." date={new Date(report.created_at).toLocaleDateString()} />
+                                <TimelineStep active={report.tracking_step >= 2} icon={<UserCheck size={14}/>} title="Department Assigned" desc="Forwarded to Ward Officer." />
+                                <TimelineStep active={report.tracking_step >= 3} icon={<HardHat size={14}/>} title="Site Inspection" desc="Field engineer investigating." />
+                                <TimelineStep active={report.tracking_step >= 4} icon={<Activity size={14}/>} title="Work in Progress" desc="On-ground repairs active." />
+                                <TimelineStep active={report.tracking_step >= 5} icon={<ShieldCheck size={14}/>} title="Final Inspection" desc="Quality audit & verification." />
+                                <TimelineStep active={report.tracking_step >= 6} icon={<CheckCircle2 size={14}/>} title="Issue Resolved" desc="Verified and closed." isLast={true} />
+                                
                                 <div className="absolute left-[11px] top-4 bottom-4 w-[2px] bg-slate-200 -z-10"></div>
-                                <div className={`absolute left-[11px] top-4 w-[2px] bg-blue-500 -z-10 transition-all duration-1000 ${report.status === 'Resolved' ? 'h-full' : report.status === 'In-Progress' ? 'h-2/3' : 'h-0'}`}></div>
+                                <div 
+                                    className="absolute left-[11px] top-4 w-[2px] bg-blue-500 -z-10 transition-all duration-1000" 
+                                    style={{ height: `${Math.min(100, ((report.tracking_step - 1) / 5) * 100)}%` }}
+                                ></div>
                             </div>
                         </div>
 

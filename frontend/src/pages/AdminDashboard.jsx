@@ -2,8 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { 
     Shield, Clock, MapPin, ThumbsUp, Trash2, CheckCircle, AlertTriangle, 
-    Send, Briefcase, Filter, BarChart3, Activity, PieChart, Users
+    Send, Briefcase, Filter, BarChart3, Activity, PieChart, Users, ChevronRight,
+    Search, AlertCircle
 } from 'lucide-react';
+
+const TRACKING_STEPS = [
+    { id: 1, label: 'Reported', color: 'bg-slate-500' },
+    { id: 2, label: 'Dept Assigned', color: 'bg-blue-500' },
+    { id: 3, label: 'Site Inspection', color: 'bg-indigo-500' },
+    { id: 4, label: 'Work in Progress', color: 'bg-amber-500' },
+    { id: 5, label: 'Final Inspection', color: 'bg-emerald-500' },
+    { id: 6, label: 'Resolved', color: 'bg-green-600' }
+];
 
 const AdminDashboard = () => {
   const [reports, setReports] = useState([]);
@@ -31,210 +41,200 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleStatusChange = async (id, newStatus) => {
-    const adminMsg = prompt("Enter progress update or resolution message:");
+  const handleUpdate = async (id, data) => {
     setUpdatingId(id);
     try {
-      await axios.put(`http://localhost:5000/api/admin/reports/${id}`, {
-        status: newStatus,
-        admin_message: adminMsg || "Official Update Provided",
-        priority: 'High'
-      });
+      await axios.put(`http://localhost:5000/api/admin/reports/${id}`, data);
       fetchData();
     } catch (err) {
-      alert("Failed to update status");
+      alert("Update failed");
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Permanent Delete? This action cannot be undone.")) return;
-    try {
-      await axios.delete(`http://localhost:5000/api/admin/reports/${id}`);
-      setReports(reports.filter(r => r.id !== id));
-    } catch (err) {
-      alert("Deletion failed");
-    }
-  };
-
   const filteredReports = useMemo(() => {
     if (activeTab === 'All') return reports;
-    return reports.filter(r => r.department?.includes(activeTab));
+    return reports.filter(r => r.department === activeTab);
   }, [reports, activeTab]);
 
-  const getStatusColor = (status) => {
-    const s = status?.toLowerCase();
-    if (s === 'resolved') return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
-    if (s === 'in progress') return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
-    return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
+  const getPriorityColor = (p) => {
+    if (p === 'High') return 'text-rose-500 bg-rose-500/10 border-rose-500/20';
+    if (p === 'Medium') return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
+    return 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
   };
 
   return (
     <div className="min-h-screen bg-[#030712] text-slate-300 font-sans p-4 md:p-10">
       
-      {/* Header & Meta */}
       <div className="max-w-7xl mx-auto mb-16">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
             <div>
                 <h1 className="text-5xl font-black text-white italic uppercase tracking-tighter flex items-center gap-4">
-                    <Shield className="text-blue-500 w-12 h-12" /> ADMIN CORE
+                    <Shield className="text-blue-500 w-12 h-12" /> COMMAND CENTER
                 </h1>
                 <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.3em] mt-3 flex items-center gap-2">
-                    <Activity size={12} className="text-emerald-500" /> Live Smart City Management Terminal
+                    <Activity size={12} className="text-emerald-500" /> Administrative Authority Dashboard
                 </p>
             </div>
             {analytics && (
                 <div className="flex gap-4">
-                    <AnalyticsCard label="Active Cases" val={analytics.pending} icon={<Clock />} color="text-rose-500" />
+                    <AnalyticsCard label="Pending" val={analytics.pending} icon={<Clock />} color="text-rose-500" />
                     <AnalyticsCard label="Resolved" val={analytics.resolved} icon={<CheckCircle />} color="text-emerald-500" />
-                    <AnalyticsCard label="Total Impact" val={analytics.total} icon={<Activity />} color="text-blue-500" />
+                    <AnalyticsCard label="Active Load" val={analytics.total} icon={<Activity />} color="text-blue-500" />
                 </div>
             )}
         </div>
       </div>
 
-      {/* Analytics Dashboard */}
       {analytics && (
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
             <div className="lg:col-span-2 bg-slate-900/40 backdrop-blur-3xl border border-white/5 rounded-[3rem] p-10">
                 <div className="flex justify-between items-center mb-10">
-                    <h3 className="text-xl font-black text-white uppercase italic flex items-center gap-3"><BarChart3 className="text-blue-500" /> Dept Distribution</h3>
-                    <PieChart className="text-slate-700" size={20} />
+                    <h3 className="text-xl font-black text-white uppercase italic flex items-center gap-3"><BarChart3 className="text-blue-500" /> Departmental Traffic</h3>
                 </div>
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                     {Object.entries(analytics.departments).map(([dept, count]) => (
-                        <div key={dept} className="space-y-2">
-                            <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                                <span>{dept} Department</span>
-                                <span className="text-white">{count} Reports</span>
-                            </div>
-                            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-blue-600 rounded-full transition-all duration-1000" 
-                                    style={{ width: `${(count / (analytics.total || 1)) * 100}%` }}
-                                ></div>
-                            </div>
+                        <div key={dept} className="bg-white/5 p-6 rounded-3xl border border-white/5 hover:border-blue-500/50 transition-all cursor-pointer" onClick={() => setActiveTab(dept)}>
+                            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-2">{dept}</p>
+                            <div className="text-3xl font-black text-white italic">{count}</div>
                         </div>
                     ))}
                 </div>
             </div>
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[3rem] p-10 flex flex-col justify-between shadow-2xl shadow-blue-500/10">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-[3rem] p-10 flex flex-col justify-between shadow-2xl">
                 <div>
-                    <h3 className="text-white font-black text-2xl uppercase italic leading-tight mb-4">Resolution Efficiency</h3>
-                    <p className="text-blue-100/60 text-xs font-bold uppercase tracking-widest">Global Performance Index</p>
+                    <h3 className="text-white font-black text-2xl uppercase italic leading-tight mb-4 text-center">System Efficiency</h3>
                 </div>
-                <div className="text-7xl font-black text-white italic py-8">
+                <div className="text-8xl font-black text-white italic py-4 text-center">
                     {Math.round((analytics.resolved / (analytics.total || 1)) * 100)}%
                 </div>
-                <div className="flex items-center gap-2 text-blue-200 text-[10px] font-black uppercase tracking-widest">
-                    <Users size={14} /> Official Response Rate
-                </div>
+                <button className="w-full py-4 bg-white/20 hover:bg-white/30 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all">Download Audit Report</button>
             </div>
         </div>
       )}
 
-      {/* Filter Tabs */}
-      <div className="max-w-7xl mx-auto mb-10 flex flex-wrap gap-4 overflow-x-auto pb-4 scrollbar-hide">
+      {/* Dept Tabs */}
+      <div className="max-w-7xl mx-auto mb-10 flex flex-wrap gap-3">
         {['All', 'PWD', 'Waste', 'Environment', 'Traffic', 'Water'].map(tab => (
             <button 
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border ${activeTab === tab ? 'bg-white text-black border-white' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/20'}`}
+                className={`px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border ${activeTab === tab ? 'bg-blue-600 text-white border-blue-500' : 'bg-white/5 text-slate-500 border-white/5 hover:border-white/10'}`}
             >
                 {tab}
             </button>
         ))}
       </div>
 
-      {/* Report Grid */}
+      {/* Reports Grid */}
       <div className="max-w-7xl mx-auto">
-        {loading ? (
-            <div className="py-40 flex flex-col items-center justify-center space-y-4">
-                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-600">Syncing with Central Intelligence...</p>
-            </div>
-        ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                {filteredReports.map(report => (
-                    <div key={report.id} className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-[3rem] p-8 hover:border-blue-500/30 transition-all group relative overflow-hidden">
-                        
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] -mr-10 -mt-10"></div>
-
-                        <div className="flex justify-between items-start mb-6">
-                            <div className={`px-4 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest ${getStatusColor(report.status)}`}>
-                                {report.status || 'Pending'}
-                            </div>
-                            <button onClick={() => handleDelete(report.id)} className="p-3 bg-white/5 rounded-xl text-slate-500 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
-                        </div>
-
-                        <div className="mb-6">
-                            <div className="flex items-center gap-2 mb-2">
-                                <Briefcase size={12} className="text-blue-500" />
-                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{report.department}</span>
-                            </div>
-                            <h3 className="text-xl font-black text-white uppercase italic leading-none truncate">{report.title}</h3>
-                            <p className="text-slate-500 text-[10px] font-bold uppercase mt-2">{report.type} • {new Date(report.created_at).toLocaleDateString()}</p>
-                        </div>
-
-                        <p className="text-slate-400 text-xs leading-relaxed mb-8 line-clamp-3 font-medium">{report.description}</p>
-
-                        {report.image_url && (
-                            <div className="aspect-video rounded-3xl overflow-hidden mb-8 border border-white/5 grayscale hover:grayscale-0 transition-all duration-700">
+        <div className="grid grid-cols-1 gap-8">
+            {filteredReports.map(report => (
+                <div key={report.id} className="bg-slate-900/40 backdrop-blur-xl border border-white/5 rounded-[3rem] p-10 flex flex-col lg:flex-row gap-10 hover:border-blue-500/20 transition-all group">
+                    
+                    {/* Visual Evidence */}
+                    <div className="w-full lg:w-1/3">
+                        {report.image_url ? (
+                            <div className="h-full min-h-[250px] rounded-[2.5rem] overflow-hidden border border-white/10 grayscale hover:grayscale-0 transition-all duration-700">
                                 <img src={report.image_url} className="w-full h-full object-cover" alt="Evidence" />
                             </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-3 mb-8">
-                            <span className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400 uppercase border border-white/5">
-                                <MapPin size={12} /> {report.location}
-                            </span>
-                            <span className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl text-[10px] font-black text-slate-400 uppercase border border-white/5">
-                                <ThumbsUp size={12} /> {report.votes || 0} Votes
-                            </span>
-                        </div>
-
-                        <div className="bg-white/5 rounded-[2rem] p-6 mb-8 border border-white/5">
-                            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">Official Resolution Message</p>
-                            <p className="text-slate-300 text-xs italic font-medium">
-                                {report.admin_message ? `"${report.admin_message}"` : "Awaiting departmental acknowledgement..."}
-                            </p>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-6 border-t border-white/5">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-full flex items-center justify-center font-black text-white text-xs shadow-lg">
-                                    {report.reporter_name?.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="text-[10px] font-black text-white uppercase tracking-wider">{report.reporter_name}</div>
+                        ) : (
+                            <div className="h-full min-h-[250px] rounded-[2.5rem] bg-white/5 flex items-center justify-center text-slate-700">
+                                <PieChart size={48} />
                             </div>
-                            <div className="relative">
+                        )}
+                    </div>
+
+                    {/* Content & Progress */}
+                    <div className="flex-1">
+                        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+                            <div className="flex items-center gap-3">
+                                <span className={`px-4 py-1.5 rounded-xl border text-[9px] font-black uppercase tracking-widest ${getPriorityColor(report.priority)}`}>
+                                    {report.priority} PRIORITY
+                                </span>
+                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">{report.department} Dept</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Clock size={12} className="text-slate-500" />
+                                <span className="text-[10px] font-black text-slate-500 uppercase">{new Date(report.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+
+                        <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter mb-4">{report.title}</h3>
+                        <p className="text-slate-400 text-sm font-medium mb-8 leading-relaxed max-w-2xl">{report.description}</p>
+
+                        <div className="flex flex-wrap gap-3 mb-10">
+                            <span className="flex items-center gap-2 bg-white/5 px-5 py-2.5 rounded-2xl text-[10px] font-black text-slate-300 uppercase border border-white/5">
+                                <MapPin size={14} className="text-blue-500" /> {report.location}
+                            </span>
+                        </div>
+
+                        {/* STEPPER UI */}
+                        <div className="mb-10">
+                            <div className="flex items-center justify-between mb-4 px-2">
+                                <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Operational Pipeline</p>
+                                <p className="text-[10px] font-black text-blue-500 uppercase">{TRACKING_STEPS[report.tracking_step - 1].label}</p>
+                            </div>
+                            <div className="flex gap-2">
+                                {TRACKING_STEPS.map(step => (
+                                    <div 
+                                        key={step.id}
+                                        onClick={() => handleUpdate(report.id, { 
+                                            tracking_step: step.id, 
+                                            status: step.id === 6 ? 'Resolved' : 'In Progress' 
+                                        })}
+                                        className={`flex-1 h-3 rounded-full cursor-pointer transition-all ${report.tracking_step >= step.id ? step.color : 'bg-white/5'}`}
+                                        title={step.label}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* ADMIN ACTIONS */}
+                        <div className="flex flex-col md:flex-row gap-6 pt-10 border-t border-white/5">
+                            <div className="flex-1">
+                                <label className="block text-[8px] font-black text-slate-500 uppercase mb-3 ml-2">Official Update Message</label>
+                                <div className="flex gap-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Type progress update..."
+                                        className="flex-1 bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white outline-none focus:border-blue-500"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleUpdate(report.id, { admin_message: e.target.value });
+                                        }}
+                                        defaultValue={report.admin_message}
+                                    />
+                                    <button className="p-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all"><Send size={18} /></button>
+                                </div>
+                            </div>
+                            <div className="w-full md:w-48">
+                                <label className="block text-[8px] font-black text-slate-500 uppercase mb-3 ml-2">Change Priority</label>
                                 <select 
-                                    disabled={updatingId === report.id}
-                                    onChange={(e) => handleStatusChange(report.id, e.target.value)}
-                                    value={report.status || 'Pending'}
-                                    className="appearance-none bg-slate-900 border border-white/10 text-[9px] font-black uppercase text-white px-6 py-3 rounded-xl outline-none cursor-pointer hover:border-blue-500 transition-all"
+                                    className="w-full bg-slate-900 border border-white/10 text-[9px] font-black uppercase text-white p-4 rounded-2xl outline-none cursor-pointer"
+                                    value={report.priority}
+                                    onChange={(e) => handleUpdate(report.id, { priority: e.target.value })}
                                 >
-                                    <option value="Pending">Pending</option>
-                                    <option value="In Progress">Working</option>
-                                    <option value="Resolved">Resolved</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
                                 </select>
                             </div>
                         </div>
                     </div>
-                ))}
-            </div>
-        )}
+                </div>
+            ))}
+        </div>
       </div>
     </div>
   );
 };
 
 const AnalyticsCard = ({ label, val, icon, color }) => (
-    <div className="bg-slate-900/40 border border-white/5 px-8 py-5 rounded-[2rem] min-w-[140px]">
+    <div className="bg-slate-900/40 border border-white/5 px-8 py-5 rounded-[2.5rem] min-w-[150px] backdrop-blur-xl">
         <div className={`flex items-center justify-between mb-2 ${color}`}>
             {icon}
-            <span className="text-2xl font-black italic">{val}</span>
+            <span className="text-3xl font-black italic">{val}</span>
         </div>
         <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
     </div>

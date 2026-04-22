@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage';
 import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
 import Emergency from './pages/Emergency';
+import SOSDispatch from './pages/SOSDispatch';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -96,6 +97,7 @@ function App() {
               <Route path="/user-home" element={<ProtectedRoute roleRequired="citizen"><UserDashboard /></ProtectedRoute>} />
               <Route path="/report-issue" element={<ProtectedRoute roleRequired="citizen"><ReportIssue /></ProtectedRoute>} />
               <Route path="/admin-dashboard" element={<ProtectedRoute roleRequired="admin"><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/sos-dispatch" element={<ProtectedRoute roleRequired="admin"><SOSDispatch /></ProtectedRoute>} />
               
               <Route path="/traffic-routes" element={
                 <ProtectedRoute roleRequired="citizen">

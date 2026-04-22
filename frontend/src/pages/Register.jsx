@@ -22,15 +22,24 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     
-    // 2. Simple Client-side Security Check
-    if (formData.role === 'admin' && formData.adminId !== 'MUM-2026-GOV') {
-      setError('❌ Invalid Admin ID. Access Denied.');
-      return;
+    // 2. Dynamic Departmental ID Validation
+    if (formData.role === 'admin') {
+      const formatRegex = /^MUM-\d{4}-[A-Z]+$/;
+      if (!formatRegex.test(formData.adminId)) {
+        setError('❌ Invalid Department ID Format (MUM-YYYY-DEPT).');
+        return;
+      }
     }
 
     try {
-      await axios.post('http://localhost:5000/api/auth/register', formData);
+      // Map adminId to deptId for backend consistency
+      const payload = { 
+        ...formData, 
+        deptId: formData.role === 'admin' ? formData.adminId : null 
+      };
+      await axios.post('http://localhost:5000/api/auth/register', payload);
       alert(`Registration Successful as ${formData.role}! Redirecting to login...`);
       navigate('/login');
     } catch (err) {
