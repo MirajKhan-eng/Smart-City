@@ -24,7 +24,7 @@ const Login = () => {
         portalType: isOfficial ? "official" : "citizen",
       };
       const res = await axios.post(
-        "http://https://smart-city-1-42tj.onrender.com/api/auth/login",
+        "https://smart-city-1-42tj.onrender.com/api/auth/login",
         payload,
       );
       localStorage.setItem("user", JSON.stringify(res.data.user));

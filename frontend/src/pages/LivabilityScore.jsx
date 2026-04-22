@@ -298,7 +298,7 @@ const LivabilityScore = () => {
   );
 
   useEffect(() => {
-    fetch("http://https://smart-city-1-42tj.onrender.com/api/livability_all")
+    fetch("https://smart-city-1-42tj.onrender.com/api/livability_all")
       .then((res) => res.json())
       .then((data) => {
         const scoreMap = {};
@@ -337,7 +337,7 @@ const LivabilityScore = () => {
 
     try {
       const res = await fetch(
-        `http://https://smart-city-1-42tj.onrender.com/api/livability/${encodeURIComponent(id)}`,
+        `https://smart-city-1-42tj.onrender.com/api/livability/${encodeURIComponent(id)}`,
       );
       const data = await res.json();
       const factors = [

@@ -57,7 +57,7 @@ const ReportIssue = () => {
   const fetchMyVotes = async () => {
     try {
       const res = await axios.get(
-        `http://https://smart-city-1-42tj.onrender.com/api/reports/my-votes/${user.id}`,
+        `https://smart-city-1-42tj.onrender.com/api/reports/my-votes/${user.id}`,
       );
       setVotedIds(new Set(res.data));
     } catch (err) {
@@ -68,7 +68,7 @@ const ReportIssue = () => {
   const fetchReports = async () => {
     try {
       const res = await axios.get(
-        `http://https://smart-city-1-42tj.onrender.com/api/reports/all`,
+        `https://smart-city-1-42tj.onrender.com/api/reports/all`,
       );
       setReports(res.data);
     } catch (err) {
@@ -98,7 +98,7 @@ const ReportIssue = () => {
     setVotedIds(newVotedIds);
     try {
       await axios.post(
-        `http://https://smart-city-1-42tj.onrender.com/api/reports/${id}/vote`,
+        `https://smart-city-1-42tj.onrender.com/api/reports/${id}/vote`,
         { user_id: user.id },
       );
       setTimeout(fetchReports, 500);
@@ -209,12 +209,12 @@ const ReportIssue = () => {
       const payload = { ...formData, user_id: parseInt(user.id) };
       if (editingReportId) {
         await axios.put(
-          `http://https://smart-city-1-42tj.onrender.com/api/reports/${editingReportId}`,
+          `https://smart-city-1-42tj.onrender.com/api/reports/${editingReportId}`,
           payload,
         );
       } else {
         await axios.post(
-          "http://https://smart-city-1-42tj.onrender.com/api/reports/submit",
+          "https://smart-city-1-42tj.onrender.com/api/reports/submit",
           payload,
         );
       }

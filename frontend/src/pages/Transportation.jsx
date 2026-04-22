@@ -182,7 +182,7 @@ const Transportation = () => {
     setData(null);
     try {
       const res = await axios.post(
-        "http://https://smart-city-1-42tj.onrender.com/api/transport/calculate",
+        "https://smart-city-1-42tj.onrender.com/api/transport/calculate",
         search,
       );
       if (res.data.success === false) {

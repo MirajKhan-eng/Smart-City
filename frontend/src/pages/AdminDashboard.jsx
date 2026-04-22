@@ -43,12 +43,8 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       const [reportsRes, analyticsRes] = await Promise.all([
-        axios.get(
-          "http://https://smart-city-1-42tj.onrender.com/api/reports/all",
-        ),
-        axios.get(
-          "http://https://smart-city-1-42tj.onrender.com/api/admin/analytics",
-        ),
+        axios.get("https://smart-city-1-42tj.onrender.com/api/reports/all"),
+        axios.get("https://smart-city-1-42tj.onrender.com/api/admin/analytics"),
       ]);
       setReports(reportsRes.data);
       setAnalytics(analyticsRes.data);
@@ -63,7 +59,7 @@ const AdminDashboard = () => {
     setUpdatingId(id);
     try {
       await axios.put(
-        `http://https://smart-city-1-42tj.onrender.com/api/admin/reports/${id}`,
+        `https://smart-city-1-42tj.onrender.com/api/admin/reports/${id}`,
         data,
       );
       fetchData();
