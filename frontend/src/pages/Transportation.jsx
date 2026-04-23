@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 import {
   Search,
   Train,
@@ -201,7 +202,7 @@ const Transportation = () => {
           purpose: search.purpose
       };
       const res = await axios.post(
-        "http://localhost:5000/api/transport/calculate",
+        `${API_BASE_URL}/api/transport/calculate`,
         payload
       );
       if (res.data.success === false) {
@@ -269,7 +270,7 @@ const Transportation = () => {
                             endCoords: newSearch.to.lat ? { lat: newSearch.to.lat, lon: newSearch.to.lon } : null,
                             purpose: p
                         };
-                        axios.post("http://localhost:5000/api/transport/calculate", payload)
+                        axios.post(`${API_BASE_URL}/api/transport/calculate`, payload)
                              .then(res => {
                                  if (res.data.success !== false) {
                                      setData(res.data);

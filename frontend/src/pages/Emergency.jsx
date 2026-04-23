@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 import {
   AlertOctagon,
   Phone,
@@ -69,7 +70,7 @@ const Emergency = () => {
       interval = setInterval(async () => {
         try {
           const res = await axios.get(
-            `http://localhost:5000/api/reports/all`,
+            `${API_BASE_URL}`/api/reports/all`,
           );
           const mySos = res.data.find((r) => r.id === parseInt(lastSosId));
           if (mySos && mySos.dispatch_type) {
@@ -104,7 +105,7 @@ const Emergency = () => {
   const saveGuardian = async () => {
     try {
       await axios.put(
-        `http://localhost:5000/api/users/${user.id}`,
+        `${API_BASE_URL}`/api/users/${user.id}`,
         {
           guardian_name: tempGuardian.name,
           guardian_phone: tempGuardian.phone,
@@ -136,7 +137,7 @@ const Emergency = () => {
 
         try {
           const res = await axios.post(
-            "http://localhost:5000/api/emergency/sos",
+            `${API_BASE_URL}/api/emergency/sos`,
             {
               user_id: user.id,
               location: loc,

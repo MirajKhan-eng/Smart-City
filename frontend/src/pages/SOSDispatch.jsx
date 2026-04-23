@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 import {
   Shield,
   Clock,
@@ -37,7 +38,7 @@ const SOSDispatch = () => {
   const fetchAlerts = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/reports/all",
+        `${API_BASE_URL}/api/reports/all`,
       );
       // Filter for Emergency/SOS types via department
       const sosAlerts = res.data.filter(
@@ -62,7 +63,7 @@ const SOSDispatch = () => {
 
     try {
       await axios.put(
-        `http://localhost:5000/api/admin/dispatch/${selectedAlert.id}`,
+        `${API_BASE_URL}/api/admin/dispatch/${selectedAlert.id}`,
         {
           type: type,
           eta: eta,
@@ -84,7 +85,7 @@ const SOSDispatch = () => {
   const resolveAlert = async (id) => {
     try {
       await axios.put(
-        `http://localhost:5000/api/admin/reports/${id}`,
+        `${API_BASE_URL}/api/admin/reports/${id}`,
         { status: "Resolved", tracking_step: 6 },
       );
       fetchAlerts();

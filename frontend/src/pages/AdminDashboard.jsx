@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 import {
   Shield, Clock, MapPin, ThumbsUp, Trash2, CheckCircle, AlertTriangle, 
   Send, Briefcase, Filter, BarChart3, Activity, PieChart, Users, ChevronRight,
@@ -47,8 +48,8 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       const [reportsRes, analyticsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/reports/all"),
-        axios.get("http://localhost:5000/api/admin/analytics"),
+        axios.get(`${API_BASE_URL}/api/reports/all`),
+        axios.get(`${API_BASE_URL}/api/admin/analytics`),
       ]);
       setReports(Array.isArray(reportsRes.data) ? reportsRes.data : []);
       setAnalytics(analyticsRes.data);
@@ -67,7 +68,7 @@ const AdminDashboard = () => {
           if (data.tracking_step === 6) data.status = "Resolved";
           else if (data.tracking_step >= 2) data.status = "In Progress";
       }
-      await axios.put(`http://localhost:5000/api/admin/reports/${id}`, data);
+      await axios.put(`${API_BASE_URL}/api/admin/reports/${id}`, data);
       fetchData();
     } catch (err) {
       alert("Update failed");
@@ -79,7 +80,7 @@ const AdminDashboard = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this report? This action is permanent.")) return;
     try {
-        await axios.delete(`http://localhost:5000/api/admin/reports/${id}`);
+        await axios.delete(`${API_BASE_URL}/api/admin/reports/${id}`);
         fetchData();
     } catch (err) {
         alert("Delete failed");

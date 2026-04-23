@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 import { useNavigate } from "react-router-dom";
 import { Shield, User, Lock, Building, Info } from "lucide-react";
 
@@ -24,7 +25,7 @@ const Login = () => {
         portalType: isOfficial ? "official" : "citizen",
       };
       const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        `${API_BASE_URL}/api/auth/login`,
         payload,
       );
       localStorage.setItem("user", JSON.stringify(res.data.user));

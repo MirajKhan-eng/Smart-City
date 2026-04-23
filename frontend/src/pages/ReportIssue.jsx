@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 import {
   ThumbsUp,
   MapPin,
@@ -57,7 +58,7 @@ const ReportIssue = () => {
   const fetchMyVotes = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/reports/my-votes/${user.id}`,
+        `${API_BASE_URL}/api/reports/my-votes/${user.id}`,
       );
       setVotedIds(new Set(res.data));
     } catch (err) {
@@ -68,7 +69,7 @@ const ReportIssue = () => {
   const fetchReports = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/reports/all`,
+        `${API_BASE_URL}/api/reports/all`,
       );
       // SORTING: 
       // - Resolved at bottom
@@ -109,7 +110,7 @@ const ReportIssue = () => {
     setVotedIds(newVotedIds);
     try {
       await axios.post(
-        `http://localhost:5000/api/reports/${id}/vote`,
+        `${API_BASE_URL}/api/reports/${id}/vote`,
         { user_id: user.id },
       );
       setTimeout(fetchReports, 500);
@@ -220,12 +221,12 @@ const ReportIssue = () => {
       const payload = { ...formData, user_id: parseInt(user.id) };
       if (editingReportId) {
         await axios.put(
-          `http://localhost:5000/api/admin/reports/${editingReportId}`,
+          `${API_BASE_URL}/api/admin/reports/${editingReportId}`,
           payload,
         );
       } else {
         await axios.post(
-          "http://localhost:5000/api/reports/submit",
+          `${API_BASE_URL}/api/reports/submit`,
           payload,
         );
       }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import API_BASE_URL from "../api";
 import { useNavigate } from 'react-router-dom';
 import { 
   MapContainer, 
@@ -121,7 +122,7 @@ const UserDashboard = () => {
 
   const fetchCityPulse = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/city/pulse');
+      const res = await axios.get(`${API_BASE_URL}/api/city/pulse`);
       const { weather, economic } = res.data;
       
       setStats(prev => ({

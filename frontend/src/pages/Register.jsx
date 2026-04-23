@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import API_BASE_URL from "../api";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const Register = () => {
@@ -40,7 +41,7 @@ const Register = () => {
         deptId: formData.role === "admin" ? formData.adminId : null,
       };
       await axios.post(
-        "http://localhost:5000/api/auth/register",
+        `${API_BASE_URL}/api/auth/register`,
         payload,
       );
       alert(

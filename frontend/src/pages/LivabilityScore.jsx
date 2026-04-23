@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import API_BASE_URL from "../api";
 import {
   MapContainer,
   TileLayer,
@@ -341,7 +342,7 @@ const LivabilityScore = () => {
   );
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/livability_all")
+    fetch(`${API_BASE_URL}/api/livability_all`)
       .then((res) => res.json())
       .then((data) => {
         const scoreMap = {};
@@ -380,7 +381,7 @@ const LivabilityScore = () => {
 
     try {
       const res = await fetch(
-        `http://localhost:5000/api/livability/${encodeURIComponent(id)}`,
+        `${API_BASE_URL}/api/livability/${encodeURIComponent(id)}`,
       );
       const data = await res.json();
       const factors = [
