@@ -70,7 +70,7 @@ const Emergency = () => {
       interval = setInterval(async () => {
         try {
           const res = await axios.get(
-            `${API_BASE_URL}`/api/reports/all`,
+            `${API_BASE_URL}/api/reports/all`,
           );
           const mySos = res.data.find((r) => r.id === parseInt(lastSosId));
           if (mySos && mySos.dispatch_type) {
@@ -105,7 +105,7 @@ const Emergency = () => {
   const saveGuardian = async () => {
     try {
       await axios.put(
-        `${API_BASE_URL}`/api/users/${user.id}`,
+        `${API_BASE_URL}/api/users/${user.id}`,
         {
           guardian_name: tempGuardian.name,
           guardian_phone: tempGuardian.phone,

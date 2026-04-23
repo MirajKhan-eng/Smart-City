@@ -266,38 +266,48 @@ const LiveLocationControl = ({ combinedData, onAreaFound }) => {
   const handleLocate = () => {
     setSearching(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const point = [pos.coords.longitude, pos.coords.latitude];
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const point = turf.point([longitude, latitude]);
         let found = null;
         let minDistance = Infinity;
         let nearest = null;
 
-        combinedData.features.forEach((f) => {
+        // TACTICAL ADDITION: Reverse Geocode to check for "Kharghar" or "Vashi" names
+        let reverseAreaName = "";
+        try {
+            const revRes = await fetch(`https://photon.komoot.io/reverse?lon=${longitude}&lat=${latitude}`);
+            const revData = await revRes.json();
+            if (revData.features && revData.features.length > 0) {
+                const props = revData.features[0].properties;
+                reverseAreaName = (props.district || props.city || props.name || "").toUpperCase();
+            }
+        } catch (e) { console.error("Reverse Geocode Failed", e); }
+
+        for (const f of combinedData.features) {
           if (f.geometry) {
-            // Check if exactly inside
-            const isInside = f.geometry.type === "Polygon" 
-                ? turf.booleanPointInPolygon(point, f)
-                : f.geometry.type === "MultiPolygon" && turf.booleanPointInPolygon(point, f);
+            const isInside = turf.booleanPointInPolygon(point, f);
+            const id = getIdentifier(f);
             
-            if (isInside) {
-                found = f;
-                return; // Exact match found
+            // If reverse geocode matches the identifier, prioritize this feature
+            if (isInside || (reverseAreaName && id.toUpperCase().includes(reverseAreaName))) {
+              found = f;
+              if (isInside) break; // Exact match
             }
 
-            // Fallback: Calculate distance to center of mass (or any point in geometry)
-            const center = turf.centerOfMass(f).geometry.coordinates;
-            const dist = calculateDistance(point, center);
+            const center = turf.centerOfMass(f);
+            const dist = turf.distance(point, center);
             if (dist < minDistance) {
               minDistance = dist;
               nearest = f;
             }
           }
-        });
+        }
 
-        const target = found || (minDistance < 5 ? nearest : null); // 5km tolerance
+        const target = found || (minDistance < 5 ? nearest : null);
 
         if (target) {
-          map.flyTo([pos.coords.latitude, pos.coords.longitude], 14);
+          map.flyTo([latitude, longitude], 14);
           onAreaFound(target);
         } else {
           alert("Outside operational boundaries (Mumbai/Navi Mumbai).");

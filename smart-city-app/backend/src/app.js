@@ -211,7 +211,7 @@ app.post('/api/emergency/sos', async (req, res) => {
     const { user_id, location } = req.body;
     try {
         const query = 'INSERT INTO reports (user_id, title, type, description, location, status, priority, tracking_step, department) VALUES ($1, \'SOS ALERT\', \'Emergency\', \'Panic button triggered via mobile app.\', $2, \'In Progress\', \'High\', 3, \'SOS\') RETURNING *';
-        const locString = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+        const locString = location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Unknown Location";
         const result = await pool.query(query, [user_id, locString]);
         res.json({ success: true, report: result.rows[0] });
     } catch (err) { res.status(500).json({ error: "SOS Log Error" }); }
@@ -232,10 +232,11 @@ app.get('/api/city/pulse', async (req, res) => {
     if (now - cityPulseCache.lastUpdated > 60000) {
         try {
             const weatherRes = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=19.076&longitude=72.877&current_weather=true&hourly=relativehumidity_2m`).catch(() => null);
-            if (weatherRes) {
+            if (weatherRes && weatherRes.data && weatherRes.data.current_weather) {
+                const humidityArray = weatherRes.data.hourly ? weatherRes.data.hourly.relativehumidity_2m : [65];
                 cityPulseCache.weather = {
                     temp: Math.round(weatherRes.data.current_weather.temperature),
-                    humidity: weatherRes.data.hourly.relativehumidity_2m[0],
+                    humidity: humidityArray[0] || 65,
                     condition: weatherRes.data.current_weather.weathercode < 3 ? "Clear" : "Cloudy",
                     aqi: 35 + Math.floor(Math.random() * 20) 
                 };
@@ -248,9 +249,15 @@ app.get('/api/city/pulse', async (req, res) => {
                 };
             }
             cityPulseCache.lastUpdated = now;
-        } catch (e) {}
+        } catch (e) { console.error("Pulse Sync Warning:", e.message); }
     }
     res.json(cityPulseCache);
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error("🚨 CRITICAL SYSTEM ERROR:", err.stack);
+    res.status(500).json({ error: "Internal Server Error", message: err.message });
 });
 
 const PORT = process.env.PORT || 5000;
