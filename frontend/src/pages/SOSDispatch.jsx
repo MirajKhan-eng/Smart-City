@@ -37,11 +37,11 @@ const SOSDispatch = () => {
   const fetchAlerts = async () => {
     try {
       const res = await axios.get(
-        "https://smart-city-1-42tj.onrender.com/api/reports/all",
+        "http://localhost:5000/api/reports/all",
       );
-      // Filter for Emergency/SOS types
+      // Filter for Emergency/SOS types via department
       const sosAlerts = res.data.filter(
-        (r) => r.type === "Emergency" || r.title === "SOS ALERT",
+        (r) => r.department === "SOS" || r.type === "Emergency" || r.title === "SOS ALERT",
       );
       setAlerts(sosAlerts);
     } catch (err) {
@@ -62,7 +62,7 @@ const SOSDispatch = () => {
 
     try {
       await axios.put(
-        `https://smart-city-1-42tj.onrender.com/api/admin/dispatch/${selectedAlert.id}`,
+        `http://localhost:5000/api/admin/dispatch/${selectedAlert.id}`,
         {
           type: type,
           eta: eta,
@@ -84,7 +84,7 @@ const SOSDispatch = () => {
   const resolveAlert = async (id) => {
     try {
       await axios.put(
-        `https://smart-city-1-42tj.onrender.com/api/admin/reports/${id}`,
+        `http://localhost:5000/api/admin/reports/${id}`,
         { status: "Resolved", tracking_step: 6 },
       );
       fetchAlerts();

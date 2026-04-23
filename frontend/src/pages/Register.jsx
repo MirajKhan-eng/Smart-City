@@ -40,7 +40,7 @@ const Register = () => {
         deptId: formData.role === "admin" ? formData.adminId : null,
       };
       await axios.post(
-        "https://smart-city-1-42tj.onrender.com/api/auth/register",
+        "http://localhost:5000/api/auth/register",
         payload,
       );
       alert(

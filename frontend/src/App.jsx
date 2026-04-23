@@ -11,6 +11,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import UserDashboard from './pages/UserDashboard';
 import Emergency from './pages/Emergency';
 import SOSDispatch from './pages/SOSDispatch';
+import ProfileSettings from './pages/ProfileSettings';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -18,7 +19,23 @@ function App() {
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) setUser(JSON.parse(savedUser));
+    if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        
+        // GLOBAL LOCATION HANDSHAKE
+        if (parsed.role === 'citizen') {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const loc = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                    localStorage.setItem('user_location', JSON.stringify(loc));
+                    console.log("📍 City Node Synchronized:", loc);
+                },
+                (err) => console.warn("⚠️ Location Handshake Declined"),
+                { enableHighAccuracy: true }
+            );
+        }
+    }
   }, []);
 
   const handleLogout = () => {
@@ -33,12 +50,12 @@ function App() {
         
         {/* SIDEBAR */}
         {user && user.role === 'citizen' && (
-          <aside className="w-64 bg-white border-r border-gray-200 flex flex-col sticky top-0 h-screen shadow-sm">
-            <div className="p-6 text-2xl font-black text-blue-600 border-b border-gray-100 flex items-center gap-2">
+          <aside className="w-72 bg-white border-r border-gray-200 flex flex-col sticky top-0 h-screen shadow-lg z-[100]">
+            <div className="p-8 text-3xl font-black text-blue-600 border-b border-gray-100 flex items-center gap-3">
               🏙️ SmartCity
             </div>
 
-            <nav className="flex-1 p-4 space-y-1">
+            <nav className="flex-1 p-6 space-y-4">
               <SidebarLink to="/user-home" icon="🏠" label="Home" />
               <SidebarLink to="/report-issue" icon="📝" label="Civic Complaints" />
               <SidebarLink to="/traffic-routes" icon="🚦" label="Traffic Routes" />
@@ -46,41 +63,40 @@ function App() {
               <SidebarLink to="/emergency" icon="🚨" label="Emergency" />
             </nav>
 
-            <div className="p-4 border-t border-gray-100">
-               <button onClick={handleLogout} className="flex items-center gap-3 w-full px-4 py-3 text-gray-500 hover:text-red-600 font-bold text-sm transition-all rounded-xl hover:bg-red-50">
-                Logout
-              </button>
+            <div className="p-6 border-t border-gray-100">
+               <SidebarLink to="/settings" icon="⚙️" label="Settings & Identity" />
             </div>
           </aside>
         )}
 
         {/* MAIN AREA */}
         <div className="flex-1 flex flex-col">
-          <header className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-8 sticky top-0 z-50">
+          <header className="h-20 bg-white border-b border-gray-200 flex justify-between items-center px-10 sticky top-0 z-50">
             {!user ? (
-               <Link to="/" className="text-2xl font-black text-blue-700">SmartCity</Link>
-            ) : <div className="font-bold text-gray-400">Dashboard / <span className="text-gray-900">Overview</span></div>}
+               <Link to="/" className="text-3xl font-black text-blue-700 tracking-tighter">SmartCity</Link>
+            ) : <div />}
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               {!user ? (
-                <Link to="/login" className="text-gray-600 font-bold">Login</Link>
+                <Link to="/login" className="text-gray-600 font-black uppercase text-xs tracking-widest hover:text-blue-600 transition-all">Login</Link>
               ) : (
                 <div className="relative">
                   <button 
                     onClick={() => setShowDropdown(!showDropdown)}
-                    className="flex items-center gap-3 p-1 pr-3 hover:bg-gray-100 rounded-full transition-all"
+                    className="flex items-center gap-4 p-2 pr-5 hover:bg-gray-100 rounded-full transition-all"
                   >
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold shadow-sm">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-black shadow-lg">
                       {user.name?.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-sm font-bold text-gray-700">{user.name}</span>
+                    <span className="text-sm font-black text-gray-700 uppercase tracking-tight">{user.name}</span>
                   </button>
                   {showDropdown && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl py-2 z-50">
-                      <div className="px-4 py-2 border-b border-gray-100">
-                        <p className="text-[10px] text-blue-600 uppercase font-black">Role: {user.role}</p>
+                    <div className="absolute right-0 mt-3 w-56 bg-white border border-gray-200 rounded-[2rem] shadow-2xl py-3 z-50 overflow-hidden">
+                      <div className="px-6 py-3 border-b border-gray-50">
+                        <p className="text-[10px] text-blue-600 uppercase font-black tracking-widest">Role: {user.role}</p>
                       </div>
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50">Logout</button>
+                      <Link to="/profile" className="block px-6 py-3 text-sm font-bold text-gray-600 hover:bg-blue-50 hover:text-blue-700 transition-all">Identity Hub</Link>
+                      <button onClick={handleLogout} className="w-full text-left px-6 py-3 text-sm font-bold text-red-600 hover:bg-red-50 transition-all border-t border-gray-50">Logout</button>
                     </div>
                   )}
                 </div>
@@ -88,7 +104,7 @@ function App() {
             </div>
           </header>
 
-          <main className="p-8">
+          <main className="p-10 bg-[#f8fafc] min-h-[calc(100vh-80px)]">
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/register" element={<Register />} />
@@ -99,6 +115,9 @@ function App() {
               <Route path="/admin-dashboard" element={<ProtectedRoute roleRequired="admin"><AdminDashboard /></ProtectedRoute>} />
               <Route path="/sos-dispatch" element={<ProtectedRoute roleRequired="admin"><SOSDispatch /></ProtectedRoute>} />
               
+              <Route path="/profile" element={<ProtectedRoute roleRequired="citizen"><ProfileSettings /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute roleRequired="citizen"><ProfileSettings /></ProtectedRoute>} />
+
               <Route path="/traffic-routes" element={
                 <ProtectedRoute roleRequired="citizen">
                   <TrafficRoute />
@@ -130,10 +149,12 @@ const SidebarLink = ({ to, icon, label }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
   return (
-    <Link to={to} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${
-      isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-500 hover:bg-gray-50'
+    <Link to={to} className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-black text-sm uppercase tracking-tight transition-all shadow-sm ${
+      isActive 
+      ? 'bg-blue-600 text-white shadow-blue-200' 
+      : 'text-slate-500 hover:bg-blue-50 hover:text-blue-700 bg-white/50 border border-transparent hover:border-blue-100'
     }`}>
-      <span className="text-lg">{icon}</span> {label}
+      <span className="text-xl">{icon}</span> {label}
     </Link>
   );
 };

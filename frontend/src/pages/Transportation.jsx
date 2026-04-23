@@ -25,6 +25,7 @@ import {
   TileLayer,
   Marker,
   Polyline,
+  GeoJSON,
   Popup,
   useMap,
 } from "react-leaflet";
@@ -77,14 +78,21 @@ const AddressAutocomplete = ({
     }
     setLoading(true);
     try {
-      // Smart search: include Mumbai to focus results
-      const query = val.toLowerCase().includes("mumbai")
+      const query = (val.toLowerCase().includes("mumbai") || val.toLowerCase().includes("navi"))
         ? val
         : `${val}, Mumbai`;
+      // Photon is much faster and better for Indian fuzzy search
       const res = await axios.get(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`,
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6`
       );
-      setSuggestions(res.data);
+      
+      const mapped = (res.data.features || []).map(f => ({
+          display_name: f.properties.name + (f.properties.city ? `, ${f.properties.city}` : "") + (f.properties.state ? `, ${f.properties.state}` : ""),
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0]
+      }));
+
+      setSuggestions(mapped);
       setShow(true);
     } catch (err) {
       console.error(err);
@@ -133,14 +141,14 @@ const AddressAutocomplete = ({
                 <div
                   key={i}
                   onClick={() => {
-                    onChange(s.display_name);
+                    onChange(s); // Pass full object {display_name, lat, lon}
                     setShow(false);
                   }}
                   className="px-6 py-4 hover:bg-slate-50 cursor-pointer flex items-center justify-between group/item transition-colors rounded-xl mb-1 last:mb-0"
                 >
                   <div className="flex items-start gap-4 overflow-hidden">
                     <div className="mt-1 bg-slate-100 p-2 rounded-full text-slate-400 group-hover/item:bg-blue-100 group-hover/item:text-blue-600 transition-all">
-                      <Clock size={16} />
+                      <MapPin size={16} />
                     </div>
                     <div className="overflow-hidden">
                       <p className="text-sm font-black text-slate-900 truncate leading-tight">
@@ -171,32 +179,40 @@ const AddressAutocomplete = ({
 };
 
 const Transportation = () => {
-  const [search, setSearch] = useState({ from: "", to: "", purpose: "Casual" });
+  const [search, setSearch] = useState({ 
+    from: { address: "", lat: null, lon: null }, 
+    to: { address: "", lat: null, lon: null }, 
+    purpose: "Casual" 
+  });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedMode, setSelectedMode] = useState(null);
 
   const onSearch = async () => {
-    if (!search.from || !search.to) return;
+    if (!search.from.address || !search.to.address) return;
     setLoading(true);
     setData(null);
     try {
+      const payload = {
+          from: search.from.address,
+          to: search.to.address,
+          startCoords: search.from.lat ? { lat: search.from.lat, lon: search.from.lon } : null,
+          endCoords: search.to.lat ? { lat: search.to.lat, lon: search.to.lon } : null,
+          purpose: search.purpose
+      };
       const res = await axios.post(
-        "https://smart-city-1-42tj.onrender.com/api/transport/calculate",
-        search,
+        "http://localhost:5000/api/transport/calculate",
+        payload
       );
       if (res.data.success === false) {
-        alert(
-          res.data.error ||
-            "Location not found. Please try a more specific address.",
-        );
+        alert(res.data.error || "Location Node Not Found");
       } else {
         setData(res.data);
         setSelectedMode(res.data.options[0]);
       }
     } catch (err) {
       console.error("Route calculation error:", err);
-      alert("Connection error. Ensure your backend server is running.");
+      alert("Mission Failed: Connection to City Grid Interrupted");
     } finally {
       setLoading(false);
     }
@@ -218,15 +234,21 @@ const Transportation = () => {
         <div className="space-y-4 mb-10">
           <AddressAutocomplete
             placeholder="Pickup Location (A)"
-            value={search.from}
-            onChange={(v) => setSearch({ ...search, from: v })}
+            value={search.from.address}
+            onChange={(s) => typeof s === 'string' 
+                ? setSearch({ ...search, from: { ...search.from, address: s, lat: null, lon: null } })
+                : setSearch({ ...search, from: { address: s.display_name, lat: s.lat, lon: s.lon } })
+            }
             icon={MapPin}
             colorClass="text-blue-500"
           />
           <AddressAutocomplete
             placeholder="Destination Point (B)"
-            value={search.to}
-            onChange={(v) => setSearch({ ...search, to: v })}
+            value={search.to.address}
+            onChange={(s) => typeof s === 'string' 
+                ? setSearch({ ...search, to: { ...search.to, address: s, lat: null, lon: null } })
+                : setSearch({ ...search, to: { address: s.display_name, lat: s.lat, lon: s.lon } })
+            }
             icon={MapPin}
             colorClass="text-emerald-500"
           />
@@ -235,7 +257,27 @@ const Transportation = () => {
             {["Office", "Student", "Casual"].map((p) => (
               <button
                 key={p}
-                onClick={() => setSearch({ ...search, purpose: p })}
+                onClick={() => {
+                    const newSearch = { ...search, purpose: p };
+                    setSearch(newSearch);
+                    if (data) {
+                        // RE-TRIGGER CALCULATION IMMEDIATELY
+                        const payload = {
+                            from: newSearch.from.address,
+                            to: newSearch.to.address,
+                            startCoords: newSearch.from.lat ? { lat: newSearch.from.lat, lon: newSearch.from.lon } : null,
+                            endCoords: newSearch.to.lat ? { lat: newSearch.to.lat, lon: newSearch.to.lon } : null,
+                            purpose: p
+                        };
+                        axios.post("http://localhost:5000/api/transport/calculate", payload)
+                             .then(res => {
+                                 if (res.data.success !== false) {
+                                     setData(res.data);
+                                     setSelectedMode(res.data.options[0]);
+                                 }
+                             });
+                    }
+                }}
                 className={`flex-1 py-3 rounded-xl border font-black text-[10px] uppercase tracking-widest transition-all ${search.purpose === p ? "bg-blue-600 border-blue-500 text-white shadow-lg" : "bg-white/5 border-white/5 text-slate-500 hover:border-white/10"}`}
               >
                 {p}
@@ -283,6 +325,8 @@ const Transportation = () => {
                       <Train size={18} />
                     ) : opt.mode === "Bus" ? (
                       <Bus size={18} />
+                    ) : opt.mode === "Auto" ? (
+                      <Gauge size={18} />
                     ) : (
                       <Car size={18} />
                     )}
@@ -337,26 +381,36 @@ const Transportation = () => {
               <Marker position={[data.coords.start.lat, data.coords.start.lon]}>
                 <Popup>
                   <div className="font-black text-[10px] p-2 uppercase">
-                    Pickup: {search.from.split(",")[0]}
+                    Pickup: {search.from.address.split(",")[0]}
                   </div>
                 </Popup>
               </Marker>
               <Marker position={[data.coords.end.lat, data.coords.end.lon]}>
                 <Popup>
                   <div className="font-black text-[10px] p-2 uppercase">
-                    Drop: {search.to.split(",")[0]}
+                    Drop: {search.to.address.split(",")[0]}
                   </div>
                 </Popup>
               </Marker>
-              <Polyline
-                positions={[
-                  [data.coords.start.lat, data.coords.start.lon],
-                  [data.coords.end.lat, data.coords.end.lon],
-                ]}
-                color="#2563eb"
-                weight={6}
-                opacity={0.6}
-              />
+              
+              {data.geometry ? (
+                <GeoJSON 
+                  key={JSON.stringify(data.geometry)}
+                  data={data.geometry} 
+                  style={{ color: "#2563eb", weight: 6, opacity: 0.8 }}
+                />
+              ) : (
+                <Polyline
+                  positions={[
+                    [data.coords.start.lat, data.coords.start.lon],
+                    [data.coords.end.lat, data.coords.end.lon],
+                  ]}
+                  color="#2563eb"
+                  weight={6}
+                  opacity={0.6}
+                />
+              )}
+              
               <MapFocusHandler
                 start={data.coords.start}
                 end={data.coords.end}

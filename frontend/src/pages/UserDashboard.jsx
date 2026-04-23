@@ -88,22 +88,23 @@ const UserDashboard = () => {
   });
 
   const [prices, setPrices] = useState({
-    gold: { value: '72,450', change: '+0.5%' },
-    silver: { value: '85,200', change: '-0.2%' },
-    petrol: { value: '104.21', change: '0.0%' },
-    diesel: { value: '92.15', change: '0.0%' }
+    gold: { value: '1,56,620', change: '+2.4%' },
+    silver: { value: '92,400', change: '+1.2%' },
+    petrol: { value: '103.44', change: '-0.1%' },
+    diesel: { value: '89.97', change: '0.0%' }
   });
 
   useEffect(() => {
-    fetchWeatherData();
+    fetchCityPulse();
     if (filter !== 'none') fetchNearbyPlaces();
     
-    const weatherInterval = setInterval(fetchWeatherData, 300000);
+    // City Pulse Sync (Weather/Economic) - 1 min cycle
+    const pulseInterval = setInterval(fetchCityPulse, 60000);
     
     // Live Time Update
     const timeInterval = setInterval(() => setCurrentTime(new Date()), 1000);
     
-    // Professional Population Growth Logic (Approx 1 net increase every 18s for Mumbai + NM)
+    // Professional Population Growth Logic
     const popInterval = setInterval(() => {
         setStats(prev => {
             const currentPop = parseInt(prev.population.replace(/,/g, ''));
@@ -112,25 +113,31 @@ const UserDashboard = () => {
     }, 18000);
 
     return () => { 
-        clearInterval(weatherInterval); 
+        clearInterval(pulseInterval); 
         clearInterval(popInterval); 
         clearInterval(timeInterval);
     };
   }, [userPos, filter]);
 
-  const fetchWeatherData = async () => {
+  const fetchCityPulse = async () => {
     try {
-      const weatherRes = await axios.get(`https://api.open-meteo.com/v1/forecast?latitude=19.0760&longitude=72.8777&current_weather=true&hourly=relativehumidity_2m`);
-      const aqiRes = await axios.get(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=19.0760&longitude=72.8777&current=european_aqi,us_aqi`);
-      const current = weatherRes.data.current_weather;
-      const currentHour = new Date().getUTCHours();
+      const res = await axios.get('http://localhost:5000/api/city/pulse');
+      const { weather, economic } = res.data;
+      
       setStats(prev => ({
         ...prev,
-        temp: Math.round(current.temperature) + '°C',
-        aqi: (aqiRes.data.current.european_aqi || aqiRes.data.current.us_aqi).toString(),
-        humidity: (weatherRes.data.hourly.relativehumidity_2m[currentHour] || 65) + '%'
+        temp: weather.temp + '°C',
+        aqi: weather.aqi.toString(),
+        humidity: weather.humidity + '%'
       }));
-    } catch (err) { console.error(err); }
+
+      setPrices({
+        gold: { value: economic.gold.toLocaleString(), change: '+2.4%' },
+        silver: { value: '92,400', change: '+1.2%' },
+        petrol: { value: economic.petrol.toFixed(2), change: '-0.1%' },
+        diesel: { value: economic.diesel.toFixed(2), change: '0.0%' }
+      });
+    } catch (err) { console.error("Pulse Sync Failure:", err); }
   };
 
   const fetchNearbyPlaces = async () => {
@@ -239,8 +246,8 @@ const UserDashboard = () => {
                 </div>
             </div>
             <div className="mt-8 pt-6 border-t border-gray-50 grid grid-cols-2 gap-4">
-                <PriceItem label="Gold 24K" value="₹72K" trend="+0.5%" isUp={true} />
-                <PriceItem label="Petrol" value="₹104" trend="0.0%" isUp={true} />
+                <PriceItem label="Gold 24K" value={`₹${prices.gold.value}`} trend={prices.gold.change} isUp={prices.gold.change.startsWith('+')} />
+                <PriceItem label="Petrol" value={`₹${prices.petrol.value}`} trend={prices.petrol.change} isUp={prices.petrol.change.startsWith('+')} />
             </div>
         </div>
 

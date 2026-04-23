@@ -69,7 +69,7 @@ const Emergency = () => {
       interval = setInterval(async () => {
         try {
           const res = await axios.get(
-            `https://smart-city-1-42tj.onrender.com/api/reports/all`,
+            `http://localhost:5000/api/reports/all`,
           );
           const mySos = res.data.find((r) => r.id === parseInt(lastSosId));
           if (mySos && mySos.dispatch_type) {
@@ -104,7 +104,7 @@ const Emergency = () => {
   const saveGuardian = async () => {
     try {
       await axios.put(
-        `https://smart-city-1-42tj.onrender.com/api/users/${user.id}`,
+        `http://localhost:5000/api/users/${user.id}`,
         {
           guardian_name: tempGuardian.name,
           guardian_phone: tempGuardian.phone,
@@ -136,7 +136,7 @@ const Emergency = () => {
 
         try {
           const res = await axios.post(
-            "https://smart-city-1-42tj.onrender.com/api/emergency/sos",
+            "http://localhost:5000/api/emergency/sos",
             {
               user_id: user.id,
               location: loc,

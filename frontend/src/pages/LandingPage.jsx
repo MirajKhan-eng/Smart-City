@@ -19,50 +19,62 @@ const LandingPage = () => {
   }, [navigate, location.pathname]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] text-center px-4 animate-in fade-in duration-700">
-       <div className="mb-6 inline-block bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-xs font-black tracking-widest uppercase">
-        Mumbai & Navi Mumbai Smart City
-      </div>
-      <h1 className="text-6xl font-black text-gray-900 mb-8 leading-tight">
-        Building a Better <br />
-        <span className="text-blue-600">Digital Urban Future.</span>
-      </h1>
-      
-      <p className="text-gray-500 max-w-lg mb-12 font-medium">
-        Select your role to access personalized services, report issues, and stay updated with your city's real-time intelligence.
-      </p>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-        {/* Citizen Portal Card */}
-        <button 
-          onClick={() => navigate('/register?role=user')}
-          className="group p-10 bg-white border-2 border-gray-100 hover:border-blue-500 rounded-[2.5rem] shadow-xl transition-all hover:-translate-y-2 text-left relative overflow-hidden"
-        >
-          <div className="relative z-10">
-            <div className="text-4xl mb-6 bg-blue-50 w-20 h-20 flex items-center justify-center rounded-3xl group-hover:scale-110 transition-transform">🏙️</div>
-            <h3 className="text-3xl font-black text-gray-900 mb-3">Citizen Portal</h3>
-            <p className="text-gray-500 font-medium">Report issues, check livability, and plan your commute.</p>
-          </div>
-          <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-blue-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        </button>
-
-        {/* Official Portal Card */}
-        <button 
-          onClick={() => navigate('/register?role=admin')}
-          className="group p-10 bg-gray-900 border-2 border-transparent hover:border-blue-500 rounded-[2.5rem] shadow-xl transition-all hover:-translate-y-2 text-left relative overflow-hidden"
-        >
-          <div className="relative z-10">
-            <div className="text-4xl mb-6 bg-gray-800 w-20 h-20 flex items-center justify-center rounded-3xl group-hover:scale-110 transition-transform">🛡️</div>
-            <h3 className="text-3xl font-black text-white mb-3">Official Portal</h3>
-            <p className="text-gray-400 font-medium">Authorized personnel login for city management.</p>
-          </div>
-          <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-gray-800 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
-        </button>
+    <div className="relative min-h-[90vh] flex flex-col items-center justify-center text-center px-4 overflow-hidden rounded-[3rem] shadow-2xl">
+      {/* BACKGROUND IMAGE WITH OVERLAY */}
+      <div className="absolute inset-0 z-0">
+        <img 
+          src="/hero-bg.png" 
+          className="w-full h-full object-cover scale-105 animate-pulse-slow"
+          alt="Futuristic City"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/90 via-white/40 to-white/90 backdrop-blur-[2px]"></div>
       </div>
 
-      <p className="mt-16 text-gray-500 font-bold">
-        Already have an account? <span onClick={() => navigate('/login')} className="text-blue-600 font-black cursor-pointer hover:underline">Login to Dashboard</span>
-      </p>
+      <div className="relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+         <div className="mb-6 inline-block bg-blue-600/10 backdrop-blur-md text-blue-700 px-6 py-2 rounded-full text-[10px] font-black tracking-[0.3em] uppercase border border-blue-600/20">
+          Mumbai & Navi Mumbai Smart City
+        </div>
+        <h1 className="text-7xl font-black text-gray-900 mb-8 leading-[1.1] tracking-tighter">
+          Building a Better <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">Digital Urban Future.</span>
+        </h1>
+        
+        <p className="text-gray-700 max-w-xl mx-auto mb-16 font-semibold text-lg leading-relaxed">
+          Select your portal to access personalized civic services, real-time traffic intelligence, and mission-critical emergency support.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 w-full max-w-5xl px-4">
+          {/* Citizen Portal Card */}
+          <button 
+            onClick={() => navigate('/register?role=user')}
+            className="group p-12 bg-white/70 backdrop-blur-xl border border-white hover:border-blue-500/50 rounded-[3.5rem] shadow-2xl transition-all hover:-translate-y-3 text-left relative overflow-hidden"
+          >
+            <div className="relative z-10">
+              <div className="text-5xl mb-8 bg-blue-600 w-24 h-24 flex items-center justify-center rounded-[2rem] text-white shadow-lg group-hover:rotate-6 transition-all duration-500">🏙️</div>
+              <h3 className="text-4xl font-black text-gray-900 mb-4 tracking-tight">Citizen Portal</h3>
+              <p className="text-gray-600 font-bold leading-snug">Report issues, track livability, and optimize your daily city commute.</p>
+            </div>
+            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-blue-600/5 rounded-full blur-3xl transition-all group-hover:scale-150"></div>
+          </button>
+
+          {/* Official Portal Card */}
+          <button 
+            onClick={() => navigate('/register?role=admin')}
+            className="group p-12 bg-slate-900/95 backdrop-blur-xl border border-slate-800 hover:border-blue-500/50 rounded-[3.5rem] shadow-2xl transition-all hover:-translate-y-3 text-left relative overflow-hidden"
+          >
+            <div className="relative z-10">
+              <div className="text-5xl mb-8 bg-gradient-to-br from-indigo-500 to-blue-600 w-24 h-24 flex items-center justify-center rounded-[2rem] text-white shadow-lg group-hover:rotate-[-6deg] transition-all duration-500">🛡️</div>
+              <h3 className="text-4xl font-black text-white mb-4 tracking-tight">Official Portal</h3>
+              <p className="text-slate-400 font-bold leading-snug">Authorized access for city officials to manage reports and tactical emergency dispatch.</p>
+            </div>
+            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-blue-600/10 rounded-full blur-3xl transition-all group-hover:scale-150"></div>
+          </button>
+        </div>
+
+        <p className="mt-20 text-gray-900 font-black tracking-wide uppercase text-xs">
+          Already a resident? <span onClick={() => navigate('/login')} className="text-blue-600 cursor-pointer hover:underline underline-offset-8 transition-all">Secure Login to Dashboard</span>
+        </p>
+      </div>
     </div>
   );
 };

@@ -57,7 +57,7 @@ const ReportIssue = () => {
   const fetchMyVotes = async () => {
     try {
       const res = await axios.get(
-        `https://smart-city-1-42tj.onrender.com/api/reports/my-votes/${user.id}`,
+        `http://localhost:5000/api/reports/my-votes/${user.id}`,
       );
       setVotedIds(new Set(res.data));
     } catch (err) {
@@ -68,9 +68,20 @@ const ReportIssue = () => {
   const fetchReports = async () => {
     try {
       const res = await axios.get(
-        `https://smart-city-1-42tj.onrender.com/api/reports/all`,
+        `http://localhost:5000/api/reports/all`,
       );
-      setReports(res.data);
+      // SORTING: 
+      // - Resolved at bottom
+      // - Votes (High > Low)
+      const sorted = (res.data || []).sort((a, b) => {
+          // Resolved last
+          const resA = a.status === 'Resolved' ? 1 : 0;
+          const resB = b.status === 'Resolved' ? 1 : 0;
+          if (resA !== resB) return resA - resB;
+
+          return (b.votes || 0) - (a.votes || 0);
+      });
+      setReports(sorted);
     } catch (err) {
       console.error("Fetch Failed");
     }
@@ -98,7 +109,7 @@ const ReportIssue = () => {
     setVotedIds(newVotedIds);
     try {
       await axios.post(
-        `https://smart-city-1-42tj.onrender.com/api/reports/${id}/vote`,
+        `http://localhost:5000/api/reports/${id}/vote`,
         { user_id: user.id },
       );
       setTimeout(fetchReports, 500);
@@ -209,15 +220,19 @@ const ReportIssue = () => {
       const payload = { ...formData, user_id: parseInt(user.id) };
       if (editingReportId) {
         await axios.put(
-          `https://smart-city-1-42tj.onrender.com/api/reports/${editingReportId}`,
+          `http://localhost:5000/api/admin/reports/${editingReportId}`,
           payload,
         );
       } else {
         await axios.post(
-          "https://smart-city-1-42tj.onrender.com/api/reports/submit",
+          "http://localhost:5000/api/reports/submit",
           payload,
         );
       }
+      
+      // SUCCESS POPUP
+      alert("🎉 Your complaint has been successfully registered! Our teams will look into it shortly.");
+      
       setShowForm(false);
       setEditingReportId(null);
       setFormData({
@@ -434,9 +449,6 @@ const ReportIssue = () => {
                 >
                   <ThumbsUp size={18} /> <span>{report.votes || 0}</span>
                 </button>
-                <button className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all">
-                  <MessageSquare size={18} /> Discuss
-                </button>
               </div>
             </div>
           ))
@@ -550,13 +562,13 @@ const ReportIssue = () => {
                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest">
                   Evidence Upload
                 </label>
-                <label className="flex flex-col items-center justify-center p-8 border-4 border-dashed border-slate-100 rounded-[2rem] cursor-pointer hover:bg-slate-50 group">
+                <label className={`flex flex-col items-center justify-center p-8 border-4 border-dashed rounded-[2rem] cursor-pointer transition-all group ${formData.image_url ? "border-emerald-500 bg-emerald-50/50" : "border-slate-100 hover:bg-slate-50"}`}>
                   <Camera
-                    className="text-slate-200 mb-3 group-hover:text-blue-50"
+                    className={`mb-3 transition-colors ${formData.image_url ? "text-emerald-500" : "text-slate-200 group-hover:text-blue-500"}`}
                     size={48}
                   />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    {formData.image_url ? "CHANGE PHOTO ✓" : "UPLOAD PHOTO"}
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${formData.image_url ? "text-emerald-600" : "text-slate-400"}`}>
+                    {formData.image_url ? "PHOTO LINKED ✓" : "UPLOAD EVIDENCE PHOTO"}
                   </span>
                   <input
                     type="file"

@@ -71,9 +71,9 @@ const localityMap = {
 
 const getColor = (score) => {
   if (!score) return "#475569";
-  if (score >= 75) return "#22c55e";
-  if (score >= 55) return "#eab308";
-  return "#ef4444";
+  if (score >= 75) return "#22c55e"; // Green
+  if (score >= 55) return "#eab308"; // Yellow
+  return "#ef4444"; // Red
 };
 
 const getIdentifier = (feature) => {
@@ -250,24 +250,67 @@ const InsightCard = ({ title, score, icon }) => (
 const LiveLocationControl = ({ combinedData, onAreaFound }) => {
   const map = useMap();
   const [searching, setSearching] = useState(false);
+
+  const calculateDistance = (p1, p2) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (p2[1] - p1[1]) * Math.PI / 180;
+    const dLon = (p2[0] - p1[0]) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(p1[1] * Math.PI / 180) * Math.cos(p2[1] * Math.PI / 180) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
   const handleLocate = () => {
     setSearching(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const point = [pos.coords.longitude, pos.coords.latitude];
         let found = null;
+        let minDistance = Infinity;
+        let nearest = null;
+
         combinedData.features.forEach((f) => {
-          if (f.geometry && turf.booleanPointInPolygon(point, f)) found = f;
+          if (f.geometry) {
+            // Check if exactly inside
+            const isInside = f.geometry.type === "Polygon" 
+                ? turf.booleanPointInPolygon(point, f)
+                : f.geometry.type === "MultiPolygon" && turf.booleanPointInPolygon(point, f);
+            
+            if (isInside) {
+                found = f;
+                return; // Exact match found
+            }
+
+            // Fallback: Calculate distance to center of mass (or any point in geometry)
+            const center = turf.centerOfMass(f).geometry.coordinates;
+            const dist = calculateDistance(point, center);
+            if (dist < minDistance) {
+              minDistance = dist;
+              nearest = f;
+            }
+          }
         });
-        if (found) {
-          map.flyTo([pos.coords.latitude, pos.coords.longitude], 13);
-          onAreaFound(found);
-        } else alert("Outside mapped region.");
+
+        const target = found || (minDistance < 5 ? nearest : null); // 5km tolerance
+
+        if (target) {
+          map.flyTo([pos.coords.latitude, pos.coords.longitude], 14);
+          onAreaFound(target);
+        } else {
+          alert("Outside operational boundaries (Mumbai/Navi Mumbai).");
+        }
         setSearching(false);
       },
-      () => setSearching(false),
+      () => {
+        alert("Geolocation access denied. Please enable location for Matrix scanning.");
+        setSearching(false);
+      },
+      { enableHighAccuracy: true }
     );
   };
+
   return (
     <button
       onClick={handleLocate}
@@ -275,7 +318,7 @@ const LiveLocationControl = ({ combinedData, onAreaFound }) => {
       className="bg-blue-600 text-white px-8 py-4 rounded-[2rem] font-black text-[10px] uppercase tracking-widest flex items-center gap-3 shadow-2xl hover:bg-blue-700 active:scale-95 disabled:opacity-50"
     >
       <Navigation className={searching ? "animate-pulse" : ""} size={16} />{" "}
-      {searching ? "Scanning..." : "My Matrix"}
+      {searching ? "Measuring Score..." : "Scan Live Score"}
     </button>
   );
 };
@@ -298,7 +341,7 @@ const LivabilityScore = () => {
   );
 
   useEffect(() => {
-    fetch("https://smart-city-1-42tj.onrender.com/api/livability_all")
+    fetch("http://localhost:5000/api/livability_all")
       .then((res) => res.json())
       .then((data) => {
         const scoreMap = {};
@@ -337,7 +380,7 @@ const LivabilityScore = () => {
 
     try {
       const res = await fetch(
-        `https://smart-city-1-42tj.onrender.com/api/livability/${encodeURIComponent(id)}`,
+        `http://localhost:5000/api/livability/${encodeURIComponent(id)}`,
       );
       const data = await res.json();
       const factors = [
